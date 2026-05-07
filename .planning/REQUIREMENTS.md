@@ -11,8 +11,8 @@
 - [ ] **DETECT-02**: Real-time watcher detects unlocks from legitimate Steam (binary VDF parser of `userdata/<steamid>/<appid>/remote/`, mtime trigger via `appcache/stats`)
 - [ ] **DETECT-03**: Real-time watcher detects unlocks from CreamAPI per-appid output
 - [ ] **DETECT-04**: Real-time watcher detects unlocks from SmartSteamEmu per-persona output
-- [ ] **DETECT-05**: First-launch state seeding — baseline existing achievement state from disk before attaching change handlers (no install-time spam of historic unlocks)
-- [ ] **DETECT-06**: 500ms debounce + content-hash equality check on file events (no double-popups for a single logical write)
+- [x] **DETECT-05**: First-launch state seeding — baseline existing achievement state from disk before attaching change handlers (no install-time spam of historic unlocks)
+- [x] **DETECT-06**: 500ms debounce + content-hash equality check on file events (no double-popups for a single logical write)
 - [x] **DETECT-07**: Cross-source duplicate suppression — one logical unlock observed by multiple adapters produces exactly one popup
 - [x] **DETECT-08**: Path discovery — parse Steam `libraryfolders.vdf` (post-2022 location and legacy location) and discover Goldberg redirects via `local_save.txt` adjacent to `steam_api.dll`
 
@@ -97,8 +97,8 @@
 | DETECT-02 | Phase 3 | Pending |
 | DETECT-03 | Phase 3 | Pending |
 | DETECT-04 | Phase 3 | Pending |
-| DETECT-05 | Phase 1 | Pending |
-| DETECT-06 | Phase 1 | Pending |
+| DETECT-05 | Phase 1 | Complete |
+| DETECT-06 | Phase 1 | Complete |
 | DETECT-07 | Phase 1 | Complete |
 | DETECT-08 | Phase 1 | Complete |
 | POPUP-01 | Phase 2 | Pending |

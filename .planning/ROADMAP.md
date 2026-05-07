@@ -33,7 +33,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [x] 01-01-PLAN.md — Tauri/Rust scaffold + dep pinning + A4 Goldberg schema empirical check
   - [x] 01-02-PLAN.md — SourceAdapter trait + RawUnlockEvent types + SqliteStore + 001 migration
   - [x] 01-03-PLAN.md — Path discovery (registry + libraryfolders.vdf both locations + local_save.txt resolution)
-  - [ ] 01-04-PLAN.md — GoldbergAdapter (baseline seed + content-hash dedup) + WatcherCore (notify-debouncer-full 500ms)
+  - [x] 01-04-PLAN.md — GoldbergAdapter (baseline seed + content-hash dedup) + WatcherCore (notify-debouncer-full 500ms)
   - [ ] 01-05-PLAN.md — CrossSourceDedup TTL stage + hallmark-cli binary + integration tests for all 5 success criteria
 
 ### Phase 2: Premium UI — Popup, Companion & Game Session

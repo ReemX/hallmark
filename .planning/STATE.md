@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-02-PLAN.md (SourceAdapter trait + SqliteStore + queries)
-last_updated: "2026-05-07T22:39:39.254Z"
+stopped_at: Completed 01-04-PLAN.md (GoldbergAdapter + WatcherCore — 14 new tests, 40 total)
+last_updated: "2026-05-07T22:48:56.523Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 5
-  completed_plans: 3
-  percent: 60
+  completed_plans: 4
+  percent: 80
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 ## Current Position
 
 Phase: 01 (detection-pipeline-foundation) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-05-07
 
-Progress: [██████░░░░] 60%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [██████░░░░] 60%
 | Phase 01 P01 | 10 | 3 tasks | 18 files |
 | Phase Phase 01 PP02 | 6 | 3 tasks | 4 files |
 | Phase 01-detection-pipeline-foundation P03 | 3 | 2 tasks | 1 files |
+| Phase 01-detection-pipeline-foundation P04 | 4 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,13 @@ Recent decisions affecting current work:
 - [Phase ?]: GoldbergRedirect pairs target_path with app_id at discovery (not adapter event-time) — handles non-numeric redirect target dirs
 - [Phase ?]: Path-discovery walkdir uses max_depth(8) — bounds adversarial-tree DoS (T-03-D1) while covering typical 2-4-deep installs
 - [Phase ?]: Tracing-capture test pattern uses scoped tracing::subscriber::set_default — avoids parallel-test flakes from a global subscriber
+- [Phase ?]: Plan 01-04: GoldbergAdapter::new takes (roots, redirect_map) — both required (Plan 05 passes HashMap::new() if no redirects)
+- [Phase ?]: Plan 01-04: SHA-256 over JSON bytes (not parsed state) — short-circuits identical re-writes without de-serializing
+- [Phase ?]: Plan 01-04: read_with_retry keys on raw_os_error()==Some(32) AND ErrorKind::PermissionDenied — Windows ERROR_SHARING_VIOLATION may surface as either
+- [Phase ?]: Plan 01-04: Diff order is read → hash → parse → diff → emit → THEN update baseline under one write lock — emit panic cannot leave baseline ahead
+- [Phase ?]: Plan 01-04: ONE shared notify-debouncer-full for all adapters — uniform 500ms (REQ DETECT-06), single sync→async bridge
+- [Phase ?]: Plan 01-04: WatcherCore filters path.exists() BEFORE debouncer.watch — prevents notify::ErrorKind::PathNotFound (Pitfall #5)
+- [Phase ?]: Plan 01-04: Prefix-match dispatch returns after first match — adapters MUST NOT have overlapping watch roots (Phase 3 forward concern)
 
 ### Pending Todos
 
@@ -95,6 +103,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-07T22:39:28.541Z
-Stopped at: Completed 01-02-PLAN.md (SourceAdapter trait + SqliteStore + queries)
+Last session: 2026-05-07T22:48:56.515Z
+Stopped at: Completed 01-04-PLAN.md (GoldbergAdapter + WatcherCore — 14 new tests, 40 total)
 Resume file: None
