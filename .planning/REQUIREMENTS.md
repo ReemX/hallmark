@@ -14,7 +14,7 @@
 - [ ] **DETECT-05**: First-launch state seeding — baseline existing achievement state from disk before attaching change handlers (no install-time spam of historic unlocks)
 - [ ] **DETECT-06**: 500ms debounce + content-hash equality check on file events (no double-popups for a single logical write)
 - [x] **DETECT-07**: Cross-source duplicate suppression — one logical unlock observed by multiple adapters produces exactly one popup
-- [ ] **DETECT-08**: Path discovery — parse Steam `libraryfolders.vdf` (post-2022 location and legacy location) and discover Goldberg redirects via `local_save.txt` adjacent to `steam_api.dll`
+- [x] **DETECT-08**: Path discovery — parse Steam `libraryfolders.vdf` (post-2022 location and legacy location) and discover Goldberg redirects via `local_save.txt` adjacent to `steam_api.dll`
 
 ### Popup
 
@@ -100,7 +100,7 @@
 | DETECT-05 | Phase 1 | Pending |
 | DETECT-06 | Phase 1 | Pending |
 | DETECT-07 | Phase 1 | Complete |
-| DETECT-08 | Phase 1 | Pending |
+| DETECT-08 | Phase 1 | Complete |
 | POPUP-01 | Phase 2 | Pending |
 | POPUP-02 | Phase 2 | Pending |
 | POPUP-03 | Phase 2 | Pending |

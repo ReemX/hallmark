@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 01-02-PLAN.md (SourceAdapter trait + SqliteStore + queries)
-last_updated: "2026-05-07T22:30:54.916Z"
+last_updated: "2026-05-07T22:39:39.254Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 5
-  completed_plans: 2
-  percent: 40
+  completed_plans: 3
+  percent: 60
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 ## Current Position
 
 Phase: 01 (detection-pipeline-foundation) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-05-07
 
-Progress: [████░░░░░░] 40%
+Progress: [██████░░░░] 60%
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Progress: [████░░░░░░] 40%
 *Updated after each plan completion*
 | Phase 01 P01 | 10 | 3 tasks | 18 files |
 | Phase Phase 01 PP02 | 6 | 3 tasks | 4 files |
+| Phase 01-detection-pipeline-foundation P03 | 3 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,9 @@ Recent decisions affecting current work:
 - [Phase ?]: Plan 01-02: UNIQUE INDEX idx_unlock_dedup on (app_id, ach_api_name, session_id) — REQ DETECT-07 belt-and-suspenders second line of defence behind Plan 05 in-memory TTL
 - [Phase ?]: Plan 01-02: SqliteStore.conn is pub(super), not pub — query helpers and tests can borrow but external crates cannot
 - [Phase ?]: Plan 01-02: SourceKind::as_str() returns stable lowercase strings — schema migrations rely on these being lossless
+- [Phase ?]: GoldbergRedirect pairs target_path with app_id at discovery (not adapter event-time) — handles non-numeric redirect target dirs
+- [Phase ?]: Path-discovery walkdir uses max_depth(8) — bounds adversarial-tree DoS (T-03-D1) while covering typical 2-4-deep installs
+- [Phase ?]: Tracing-capture test pattern uses scoped tracing::subscriber::set_default — avoids parallel-test flakes from a global subscriber
 
 ### Pending Todos
 
@@ -91,6 +95,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-07T22:30:54.908Z
+Last session: 2026-05-07T22:39:28.541Z
 Stopped at: Completed 01-02-PLAN.md (SourceAdapter trait + SqliteStore + queries)
 Resume file: None
