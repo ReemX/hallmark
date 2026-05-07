@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Hallmark",
+  "version": "0.1.0",
+  "identifier": "com.hallmark.app",
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "frontendDist": "../dist",
+    "devUrl": null
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": false,
+    "targets": "none",
+    "category": "Utility",
+    "shortDescription": "PSN/Xbox-grade achievement popups for PC gaming",
+    "longDescription": "PSN/Xbox-grade achievement popups for PC gaming.",
+    "icon": []
+  }
+}

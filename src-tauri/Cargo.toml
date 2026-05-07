@@ -1,0 +1,52 @@
+[package]
+name         = "hallmark"
+version      = { workspace = true }
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+repository   = { workspace = true }
+description  = "PSN/Xbox-grade achievement satisfaction for PC gaming."
+publish      = false
+
+[build-dependencies]
+# tauri-build versioning is independent of the tauri runtime — runtime is 2.11, build is 2.6.x.
+# See: https://github.com/tauri-apps/tauri (workspace pins tauri-build to its own track).
+tauri-build = { version = "2.6", features = [] }
+
+[dependencies]
+tauri                 = { version = "2.11", features = [] }
+tokio                 = { version = "1.52", features = ["rt-multi-thread", "sync", "macros", "time", "fs"] }
+notify                = "8.2"
+notify-debouncer-full = "0.7"
+serde                 = { version = "1.0", features = ["derive"] }
+serde_json            = "1.0"
+rusqlite              = { version = "0.39", features = ["bundled"] }
+keyvalues-parser      = "0.2"
+walkdir               = "2.5"
+sha2                  = "0.11"
+anyhow                = "1.0"
+thiserror             = "2.0"
+async-trait           = "0.1"
+tracing               = "0.1"
+tracing-subscriber    = { version = "0.3", features = ["env-filter", "fmt"] }
+dirs                  = "6.0"
+uuid                  = { version = "1.23", features = ["v4", "serde"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+winreg = "0.56"
+
+[features]
+default        = []
+custom-protocol = ["tauri/custom-protocol"]
+
+[[bin]]
+name = "hallmark"
+path = "src/main.rs"
+
+# NOTE: An additional `[[bin]] name = "hallmark-cli"` entry is added by Plan 05 once
+# bin/hallmark-cli.rs exists. Do NOT add it now — cargo errors on missing bin paths.
+
+[lib]
+name       = "hallmark_lib"
+path       = "src/lib.rs"
+crate-type = ["staticlib", "cdylib", "rlib"]

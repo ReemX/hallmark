@@ -1,0 +1,12 @@
+/target
+/src-tauri/target
+/src-tauri/gen
+Cargo.lock.bak
+*.swp
+.DS_Store
+Thumbs.db
+/dist
+/node_modules
+/hallmark.db
+/hallmark.db-shm
+/hallmark.db-wal
