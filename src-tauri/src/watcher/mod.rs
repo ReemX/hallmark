@@ -19,6 +19,8 @@
 //! REQ DETECT-05 forbids. This invariant is enforced by the function-call order
 //! in `run_watcher` and asserted by `run_watcher_seeds_before_attaching_watcher`.
 
+pub mod dedup;
+
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -284,5 +286,136 @@ mod tests {
 
         handle.abort();
         let _ = fs::remove_dir_all(&root);
+    }
+}
+
+// ----------------- Pipeline consumer (Plan 05) -----------------
+
+use crate::store::SqliteStore;
+use crate::watcher::dedup::CrossSourceDedup;
+use tokio::sync::Mutex as TokioMutex;
+
+/// Consumes the `raw_rx` stream from `run_watcher`, applies cross-source dedup
+/// (REQ DETECT-07), persists each KEPT event to the SQLite store, and forwards
+/// kept events to the `sink` for the CLI test harness / Phase 2 popup queue.
+///
+/// Returns when `raw_rx` is closed (graceful shutdown).
+pub async fn run_pipeline(
+    _adapters: Vec<Arc<dyn SourceAdapter>>, // not directly used here, kept for API symmetry
+    mut raw_rx: mpsc::Receiver<RawUnlockEvent>,
+    store: Arc<SqliteStore>,
+    session_id: String,
+    sink: mpsc::Sender<RawUnlockEvent>,
+    dedup_ttl: Duration,
+) -> anyhow::Result<()> {
+    let dedup = Arc::new(TokioMutex::new(CrossSourceDedup::new(dedup_ttl)));
+
+    while let Some(evt) = raw_rx.recv().await {
+        let is_dup = {
+            let mut d = dedup.lock().await;
+            d.is_duplicate(evt.app_id, &evt.ach_api_name)
+        };
+        if is_dup {
+            tracing::debug!(
+                app_id = evt.app_id,
+                ach = %evt.ach_api_name,
+                source = %evt.source,
+                "cross-source dedup: dropped duplicate"
+            );
+            continue;
+        }
+
+        // Persist (belt-and-suspenders DB-level dedup via UNIQUE INDEX).
+        let inserted = match store.record_unlock(
+            evt.app_id,
+            &evt.ach_api_name,
+            evt.source.as_str(),
+            Some(&session_id),
+        ) {
+            Ok(v) => v,
+            Err(e) => {
+                tracing::warn!(error = %e, "store.record_unlock failed");
+                false
+            }
+        };
+        if !inserted {
+            tracing::debug!(
+                app_id = evt.app_id,
+                ach = %evt.ach_api_name,
+                "DB-level dedup: row already existed (UNIQUE INDEX)"
+            );
+            continue;
+        }
+
+        tracing::info!(
+            app_id = evt.app_id,
+            ach = %evt.ach_api_name,
+            source = %evt.source,
+            "UNLOCK"
+        );
+        if sink.send(evt).await.is_err() {
+            tracing::debug!("downstream sink closed; pipeline draining");
+        }
+    }
+
+    tracing::info!("run_pipeline shutting down (raw_rx closed)");
+    Ok(())
+}
+
+#[cfg(test)]
+mod pipeline_tests {
+    use super::*;
+    use crate::sources::SourceKind;
+    use std::time::Duration as StdDuration;
+
+    #[tokio::test]
+    async fn run_pipeline_dedups_simultaneous_cross_source_events() {
+        let store = Arc::new(SqliteStore::open_in_memory().unwrap());
+        let session_id = "test-session-1".to_string();
+        let (raw_tx, raw_rx) = mpsc::channel::<RawUnlockEvent>(8);
+        let (sink_tx, mut sink_rx) = mpsc::channel::<RawUnlockEvent>(8);
+        let store_clone = store.clone();
+
+        let handle = tokio::spawn(run_pipeline(
+            vec![],
+            raw_rx,
+            store_clone,
+            session_id.clone(),
+            sink_tx,
+            StdDuration::from_secs(10),
+        ));
+
+        // Two events with the SAME logical key emitted within TTL — the second must dedup.
+        for _ in 0..2 {
+            raw_tx
+                .send(RawUnlockEvent {
+                    app_id: 480,
+                    ach_api_name: "ACH_X".into(),
+                    timestamp: 0,
+                    source: SourceKind::Goldberg,
+                })
+                .await
+                .unwrap();
+        }
+
+        let evt = tokio::time::timeout(StdDuration::from_millis(200), sink_rx.recv())
+            .await
+            .unwrap()
+            .expect("first event should pass through");
+        assert_eq!(evt.app_id, 480);
+        assert_eq!(evt.ach_api_name, "ACH_X");
+
+        // Second event must NOT pass through within 200ms
+        let none = tokio::time::timeout(StdDuration::from_millis(200), sink_rx.recv()).await;
+        assert!(
+            none.is_err() || none.unwrap().is_none(),
+            "duplicate must be dropped at dedup stage"
+        );
+
+        // Store has exactly ONE row
+        assert_eq!(store.count_unlocks().unwrap(), 1);
+
+        drop(raw_tx);
+        let _ = handle.await;
     }
 }
