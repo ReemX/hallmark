@@ -927,27 +927,31 @@ impl SqliteStore {
 
 **If any of A1–A6 is wrong:** Phase 1 may still ship correctly because each has a defensive fallback or a plan-phase validation hook. The most material is A4 (gbe_fork schema parity) — the planner should add a "Wave 0: empirical Goldberg state file inspection" step to confirm field names against a real save.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **gbe_fork state file field names** (relates to A4 above)
    - What we know: WebSearch confirmed `earned` and `earned_time` for legacy Goldberg; gbe_fork is an active fork.
    - What's unclear: Whether gbe_fork preserves the same field names. The fork's own README does not document the runtime state schema explicitly.
    - Recommendation: First task of Phase 1 implementation should be to run a real Goldberg-or-gbe_fork-cracked indie game once, then `cat` the resulting state file and confirm field names. If divergent, parameterize `GoldbergEntry` field names per-adapter-variant. **Plan should include this empirical check before the adapter code is finalized.**
+   - **RESOLVED:** Plan 01 Task 1 produces `empirical-goldberg-schema-NOTES.md` resolving Assumption A4 (empirical inspection or documented fallback). Plan 04 Task 1 locks the parser to `{ "ACH_NAME": { "earned": bool, "earned_time": u64 } }` with `#[serde(default)]` on `earned_time` per the NOTES.md decision.
 
 2. **PUBLIC documents path for Goldberg saves**
    - What we know: Some older guides mention `%PUBLIC%\Documents\Goldberg SteamEmu Saves\`.
    - What's unclear: Whether modern Goldberg/gbe_fork ever writes there.
    - Recommendation: Include the path in `goldberg_default_roots()` (cheap to check `path.exists()`), don't add as a primary path. If absent it's silently skipped.
+   - **RESOLVED:** Plan 03 Task 2 `goldberg_default_roots()` includes `%PUBLIC%\Documents\Goldberg SteamEmu Saves\` as the third candidate path; existence-filtered so absent paths do not produce noise.
 
 3. **Whether to use `tokio::sync::RwLock` or `std::sync::RwLock` for the baseline**
    - What we know: The baseline is read-rare, write-on-update. Lock contention is negligible.
    - What's unclear: Whether the await-points across the lock matter.
    - Recommendation: Use `tokio::sync::RwLock` because `seed_baseline()` and `on_file_changed()` are async; mixing std and tokio locks is a footgun. The async lock is also lighter on this workload.
+   - **RESOLVED:** Plan 04 Task 1 `GoldbergAdapter` uses `Arc<tokio::sync::RwLock<HashMap<(u64, String), bool>>>` for the baseline and `Arc<tokio::sync::RwLock<HashMap<PathBuf, [u8; 32]>>>` for last_hash, per the recommendation.
 
 4. **Test harness shape: `cargo run --bin hallmark-cli` vs. `cargo test`**
    - What we know: Success criteria are stated as observable behaviors (one event per drop, zero events on populated init, etc.). They can be checked manually OR via Rust integration tests.
    - What's unclear: Whether the planner wants automated tests or a manual CLI verification protocol.
    - Recommendation: Both. The `bin/hallmark-cli` for manual exercise; `tests/integration_phase1.rs` for automated success-criterion-style tests against fixture directories. Since `nyquist_validation = false`, automated tests are not contractually required, but the success criteria are precise enough to be cheaply automated.
+   - **RESOLVED:** Both shipped. Plan 05 Task 2 produces `src-tauri/src/bin/hallmark-cli.rs` (manual harness) AND Plan 05 Task 3 produces `src-tauri/tests/integration_phase1.rs` (5 automated SC tests, one per ROADMAP success criterion).
 
 ## Environment Availability
 

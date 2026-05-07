@@ -29,7 +29,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. A game whose Goldberg installation uses a `local_save.txt` redirect (non-default AppData path) is discovered automatically and its achievements are watched without any manual configuration.
   4. Unlocking the same achievement simultaneously via two simulated adapter sources (cross-source dedup test) produces exactly one event, not two.
   5. All discovered paths (Steam library folders, Goldberg default + redirect paths) are logged at startup so silent zero-popup failures can be diagnosed.
-**Plans**: TBD
+**Plans**: 5 plans
+  - [ ] 01-01-PLAN.md — Tauri/Rust scaffold + dep pinning + A4 Goldberg schema empirical check
+  - [ ] 01-02-PLAN.md — SourceAdapter trait + RawUnlockEvent types + SqliteStore + 001 migration
+  - [ ] 01-03-PLAN.md — Path discovery (registry + libraryfolders.vdf both locations + local_save.txt resolution)
+  - [ ] 01-04-PLAN.md — GoldbergAdapter (baseline seed + content-hash dedup) + WatcherCore (notify-debouncer-full 500ms)
+  - [ ] 01-05-PLAN.md — CrossSourceDedup TTL stage + hallmark-cli binary + integration tests for all 5 success criteria
 
 ### Phase 2: Premium UI — Popup, Companion & Game Session
 **Goal**: A real achievement unlock from the Phase 1 pipeline fires a premium PS5-style popup overlay with signature sound on the correct monitor, the companion window auto-shows and lists earned achievements when a game is running, and the system handles queue bursts, DPI, rarity display, and 100% completion without dropping events or stealing focus.
@@ -75,7 +80,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Detection Pipeline Foundation | 0/TBD | Not started | - |
+| 1. Detection Pipeline Foundation | 0/5 | Not started | - |
 | 2. Premium UI — Popup, Companion & Game Session | 0/TBD | Not started | - |
 | 3. Remaining Source Adapters | 0/TBD | Not started | - |
 | 4. Polish & Distribution | 0/TBD | Not started | - |
