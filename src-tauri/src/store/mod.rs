@@ -3,10 +3,8 @@
 //! Phase 1 scope: `unlock_history`, `sessions`, `settings` tables. Single connection
 //! wrapped in `Mutex` is sufficient — desktop app, single process, low contention.
 //! Phase 2 will add schema_cache + icon_cache tables; Phase 3 may extend sessions.
-//!
-//! Note: `pub mod queries;` is added by Task 3 once `queries.rs` exists. Without
-//! it, the unused `pub(super)` visibility on `conn` would emit a dead-code warning,
-//! so we accept the warning here for Task 2's commit and resolve it in Task 3.
+
+pub mod queries;
 
 use rusqlite::{params, Connection};
 use std::path::Path;
@@ -114,11 +112,7 @@ mod tests {
             .record_unlock(480, "ACH_X", "goldberg", Some("session-1"))
             .unwrap();
         assert!(!inserted_again, "duplicate insert should report Ok(false)");
-        assert_eq!(
-            s.count_unlocks().unwrap(),
-            1,
-            "no new row should exist"
-        );
+        assert_eq!(s.count_unlocks().unwrap(), 1, "no new row should exist");
     }
 
     #[test]
