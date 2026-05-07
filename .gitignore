@@ -5,7 +5,12 @@ Cargo.lock.bak
 *.swp
 .DS_Store
 Thumbs.db
-/dist
+# /dist is normally a Vite build output (Phase 2+). For Phase 1 we keep a tiny
+# placeholder index.html committed so `tauri::generate_context!()` resolves —
+# Vite outputs additional assets that should NOT be tracked, so we negate
+# only the placeholder file by name.
+/dist/*
+!/dist/index.html
 /node_modules
 /hallmark.db
 /hallmark.db-shm

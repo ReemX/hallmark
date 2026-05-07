@@ -17,10 +17,10 @@
   },
   "bundle": {
     "active": false,
-    "targets": "none",
+    "targets": "all",
     "category": "Utility",
     "shortDescription": "PSN/Xbox-grade achievement popups for PC gaming",
     "longDescription": "PSN/Xbox-grade achievement popups for PC gaming.",
-    "icon": []
+    "icon": ["icons/icon.ico"]
   }
 }
