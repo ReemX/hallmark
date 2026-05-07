@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
+status: verifying
 stopped_at: Completed 01-04-PLAN.md (GoldbergAdapter + WatcherCore — 14 new tests, 40 total)
-last_updated: "2026-05-07T22:48:56.523Z"
+last_updated: "2026-05-07T23:04:00.123Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
-  completed_plans: 4
-  percent: 80
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 
 Phase: 01 (detection-pipeline-foundation) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-07
 
-Progress: [████████░░] 80%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Progress: [████████░░] 80%
 | Phase Phase 01 PP02 | 6 | 3 tasks | 4 files |
 | Phase 01-detection-pipeline-foundation P03 | 3 | 2 tasks | 1 files |
 | Phase 01-detection-pipeline-foundation P04 | 4 | 2 tasks | 3 files |
+| Phase 01 P05 | 12 | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,12 @@ Recent decisions affecting current work:
 - [Phase ?]: Plan 01-04: ONE shared notify-debouncer-full for all adapters — uniform 500ms (REQ DETECT-06), single sync→async bridge
 - [Phase ?]: Plan 01-04: WatcherCore filters path.exists() BEFORE debouncer.watch — prevents notify::ErrorKind::PathNotFound (Pitfall #5)
 - [Phase ?]: Plan 01-04: Prefix-match dispatch returns after first match — adapters MUST NOT have overlapping watch roots (Phase 3 forward concern)
+- [Phase ?]: Plan 01-05: CrossSourceDedup default TTL = 10 seconds (RESEARCH.md Pattern 3 generous safety margin; SQLite UNIQUE INDEX is the belt-and-suspenders second layer)
+- [Phase ?]: Plan 01-05: SqliteStore::with_conn helper added BEFORE the CLI consumer (W-06 ordering fix) — closure-based API is the only one consumers ever see
+- [Phase ?]: Plan 01-05: hallmark-cli supports BOTH --override-goldberg-root argv AND HALLMARK_GOLDBERG_ROOT_OVERRIDE env var (env var wins)
+- [Phase ?]: Plan 01-05: tokio signal feature added (Rule 3 auto-fix) — required for tokio::signal::ctrl_c().await; Plan 01-01 omitted it
+- [Phase ?]: Plan 01-05: Public *_pub_for_tests shims in paths.rs over relaxing pub(crate) visibility (minimum-surface delta for external integration tests)
+- [Phase ?]: Plan 01-05: SC3 builds real on-disk Steam-library fixture (B-01 fix); SC4 uses two real MockAdapter file-event paths (W-08 fix)
 
 ### Pending Todos
 
@@ -103,6 +110,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-07T22:48:56.515Z
+Last session: 2026-05-07T23:03:21.914Z
 Stopped at: Completed 01-04-PLAN.md (GoldbergAdapter + WatcherCore — 14 new tests, 40 total)
 Resume file: None

@@ -34,7 +34,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [x] 01-02-PLAN.md — SourceAdapter trait + RawUnlockEvent types + SqliteStore + 001 migration
   - [x] 01-03-PLAN.md — Path discovery (registry + libraryfolders.vdf both locations + local_save.txt resolution)
   - [x] 01-04-PLAN.md — GoldbergAdapter (baseline seed + content-hash dedup) + WatcherCore (notify-debouncer-full 500ms)
-  - [ ] 01-05-PLAN.md — CrossSourceDedup TTL stage + hallmark-cli binary + integration tests for all 5 success criteria
+  - [x] 01-05-PLAN.md — CrossSourceDedup TTL stage + hallmark-cli binary + integration tests for all 5 success criteria
 
 ### Phase 2: Premium UI — Popup, Companion & Game Session
 **Goal**: A real achievement unlock from the Phase 1 pipeline fires a premium PS5-style popup overlay with signature sound on the correct monitor, the companion window auto-shows and lists earned achievements when a game is running, and the system handles queue bursts, DPI, rarity display, and 100% completion without dropping events or stealing focus.
