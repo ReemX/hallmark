@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. All discovered paths (Steam library folders, Goldberg default + redirect paths) are logged at startup so silent zero-popup failures can be diagnosed.
 **Plans**: 5 plans
   - [x] 01-01-PLAN.md — Tauri/Rust scaffold + dep pinning + A4 Goldberg schema empirical check
-  - [ ] 01-02-PLAN.md — SourceAdapter trait + RawUnlockEvent types + SqliteStore + 001 migration
+  - [x] 01-02-PLAN.md — SourceAdapter trait + RawUnlockEvent types + SqliteStore + 001 migration
   - [ ] 01-03-PLAN.md — Path discovery (registry + libraryfolders.vdf both locations + local_save.txt resolution)
   - [ ] 01-04-PLAN.md — GoldbergAdapter (baseline seed + content-hash dedup) + WatcherCore (notify-debouncer-full 500ms)
   - [ ] 01-05-PLAN.md — CrossSourceDedup TTL stage + hallmark-cli binary + integration tests for all 5 success criteria
@@ -80,7 +80,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Detection Pipeline Foundation | 0/5 | Not started | - |
+| 1. Detection Pipeline Foundation | 2/5 | In Progress|  |
 | 2. Premium UI — Popup, Companion & Game Session | 0/TBD | Not started | - |
 | 3. Remaining Source Adapters | 0/TBD | Not started | - |
 | 4. Polish & Distribution | 0/TBD | Not started | - |
