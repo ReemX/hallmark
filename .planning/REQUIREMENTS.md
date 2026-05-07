@@ -93,40 +93,40 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DETECT-01 | TBD | Pending |
-| DETECT-02 | TBD | Pending |
-| DETECT-03 | TBD | Pending |
-| DETECT-04 | TBD | Pending |
-| DETECT-05 | TBD | Pending |
-| DETECT-06 | TBD | Pending |
-| DETECT-07 | TBD | Pending |
-| DETECT-08 | TBD | Pending |
-| POPUP-01 | TBD | Pending |
-| POPUP-02 | TBD | Pending |
-| POPUP-03 | TBD | Pending |
-| POPUP-04 | TBD | Pending |
-| POPUP-05 | TBD | Pending |
-| POPUP-06 | TBD | Pending |
-| POPUP-07 | TBD | Pending |
-| POPUP-08 | TBD | Pending |
-| COMP-01 | TBD | Pending |
-| COMP-02 | TBD | Pending |
-| COMP-03 | TBD | Pending |
-| GAME-01 | TBD | Pending |
-| GAME-02 | TBD | Pending |
-| GAME-03 | TBD | Pending |
-| POL-01 | TBD | Pending |
-| POL-02 | TBD | Pending |
-| DIST-01 | TBD | Pending |
-| DIST-02 | TBD | Pending |
-| DIST-03 | TBD | Pending |
-| DIST-04 | TBD | Pending |
+| DETECT-01 | Phase 1 | Pending |
+| DETECT-02 | Phase 3 | Pending |
+| DETECT-03 | Phase 3 | Pending |
+| DETECT-04 | Phase 3 | Pending |
+| DETECT-05 | Phase 1 | Pending |
+| DETECT-06 | Phase 1 | Pending |
+| DETECT-07 | Phase 1 | Pending |
+| DETECT-08 | Phase 1 | Pending |
+| POPUP-01 | Phase 2 | Pending |
+| POPUP-02 | Phase 2 | Pending |
+| POPUP-03 | Phase 2 | Pending |
+| POPUP-04 | Phase 2 | Pending |
+| POPUP-05 | Phase 2 | Pending |
+| POPUP-06 | Phase 2 | Pending |
+| POPUP-07 | Phase 2 | Pending |
+| POPUP-08 | Phase 2 | Pending |
+| COMP-01 | Phase 2 | Pending |
+| COMP-02 | Phase 2 | Pending |
+| COMP-03 | Phase 2 | Pending |
+| GAME-01 | Phase 2 | Pending |
+| GAME-02 | Phase 2 | Pending |
+| GAME-03 | Phase 2 | Pending |
+| POL-01 | Phase 4 | Pending |
+| POL-02 | Phase 4 | Pending |
+| DIST-01 | Phase 4 | Pending |
+| DIST-02 | Phase 4 | Pending |
+| DIST-03 | Phase 4 | Pending |
+| DIST-04 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 28 total
-- Mapped to phases: 0 (filled by roadmap)
-- Unmapped: 28 (will be filled by `gsd-roadmapper`)
+- Mapped to phases: 28
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-07*
-*Last updated: 2026-05-07 after initial definition*
+*Last updated: 2026-05-07 after roadmap creation (traceability filled)*

@@ -1,0 +1,81 @@
+# Roadmap: Hallmark
+
+## Overview
+
+Hallmark ships in four coarse phases. Phase 1 lays the load-bearing detection pipeline: the Goldberg adapter, watcher core, first-launch state seeding, path discovery, and SQLite store — the foundation every other feature depends on. Phase 2 builds the entire premium UI layer on top of a stable event stream: popup overlay, companion window, game-session detection, and schema/icon resolution, making the hero feature verifiable end-to-end via Goldberg events. Phase 3 completes adapter coverage by adding the Steam-legit binary VDF parser plus the CreamAPI and SmartSteamEmu adapters, sealing the cross-source dedup contract. Phase 4 wraps with polish triggers and the full distribution pipeline, producing a public GitHub release.
+
+## Phases
+
+**Phase Numbering:**
+- Integer phases (1, 2, 3): Planned milestone work
+- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+
+Decimal phases appear between their surrounding integers in numeric order.
+
+- [ ] **Phase 1: Detection Pipeline Foundation** - Watcher core, Goldberg adapter, first-launch seeding, path discovery, SQLite store
+- [ ] **Phase 2: Premium UI — Popup, Companion & Game Session** - Popup overlay with signature sound, companion window, game-session detection, schema/icon resolution
+- [ ] **Phase 3: Remaining Source Adapters** - Steam-legit binary VDF adapter, CreamAPI adapter, SmartSteamEmu adapter, cross-source dedup
+- [ ] **Phase 4: Polish & Distribution** - Test popup trigger, start-with-Windows, NSIS installer, auto-updater, GitHub Actions release pipeline, first-run wizard
+
+## Phase Details
+
+### Phase 1: Detection Pipeline Foundation
+**Goal**: A reliable, spam-free unlock event stream is flowing end-to-end for Goldberg-emulated games, with correct first-launch baseline seeding, 500ms debounce, and cross-source dedup — ready for a UI layer to consume.
+**Depends on**: Nothing (first phase)
+**Requirements**: DETECT-01, DETECT-05, DETECT-06, DETECT-07, DETECT-08
+**Success Criteria** (what must be TRUE):
+  1. Dropping a pre-populated Goldberg `achievements.json` for a known appID into the watched directory — then marking one entry as earned — produces exactly one unlock event in the CLI test harness within one second, with no duplicate events for 5 seconds afterward.
+  2. When Hallmark starts with an already-populated Goldberg save directory (achievements earned before install), zero historical unlock events are emitted; only net-new changes after startup trigger events.
+  3. A game whose Goldberg installation uses a `local_save.txt` redirect (non-default AppData path) is discovered automatically and its achievements are watched without any manual configuration.
+  4. Unlocking the same achievement simultaneously via two simulated adapter sources (cross-source dedup test) produces exactly one event, not two.
+  5. All discovered paths (Steam library folders, Goldberg default + redirect paths) are logged at startup so silent zero-popup failures can be diagnosed.
+**Plans**: TBD
+
+### Phase 2: Premium UI — Popup, Companion & Game Session
+**Goal**: A real achievement unlock from the Phase 1 pipeline fires a premium PS5-style popup overlay with signature sound on the correct monitor, the companion window auto-shows and lists earned achievements when a game is running, and the system handles queue bursts, DPI, rarity display, and 100% completion without dropping events or stealing focus.
+**Depends on**: Phase 1
+**Requirements**: POPUP-01, POPUP-02, POPUP-03, POPUP-04, POPUP-05, POPUP-06, POPUP-07, POPUP-08, COMP-01, COMP-02, COMP-03, GAME-01, GAME-02, GAME-03
+**Research flag**: WASAPI shared-mode latency — measure rodio audio latency on representative gaming hardware before finalizing the signature sound implementation; fall back to kira if latency exceeds ~30ms. Also validate that `WS_EX_NOACTIVATE` post-creation HWND patch fully prevents focus-steal across DX11/DX12 borderless-windowed titles.
+**Success Criteria** (what must be TRUE):
+  1. When a Goldberg achievement unlocks, a popup appears within one second on the monitor where the game window is displayed, shows the achievement icon, title, and description, plays the signature sound, animates in and out, and the game window never loses focus.
+  2. Unlocking five achievements in rapid succession queues all five popups; each displays sequentially with no dropped entries, and if the game hits 100% the celebration popup appears last in the queue.
+  3. When a game launches, the companion window appears automatically, lists the full achievement set (earned entries marked), and when the game closes the companion window hides; restarting Hallmark mid-session restores the "earned this session" list from SQLite.
+  4. On a 4K / high-DPI display the popup renders at the correct physical size with no pixelation or truncation; rarity percentage is shown when sourced from Steam `appcache` global stats and gracefully absent when unavailable; rare achievements display the richer animation/sound treatment.
+  5. Schema (display name, description, icon) for the running game is resolved and cached in SQLite before the first popup fires, so popups appear without a loading delay after the first session with that game.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 3: Remaining Source Adapters
+**Goal**: Achievement unlocks from legitimate Steam installations (binary VDF), CreamAPI, and SmartSteamEmu all flow through the same pipeline and fire the same premium popup as Goldberg, with no duplicate popups when multiple adapters observe the same logical unlock.
+**Depends on**: Phase 2
+**Requirements**: DETECT-02, DETECT-03, DETECT-04
+**Research flag**: HIGH — Steam binary VDF achievement-state schema (field names, encoding, timestamp fields) and CreamAPI per-appid file format and SmartSteamEmu per-persona folder layout all require empirical validation against live installations during planning. Do not assume Goldberg JSON field names apply.
+**Success Criteria** (what must be TRUE):
+  1. Unlocking an achievement in a legitimate Steam game (with Steam client running) fires a Hallmark popup within one second, identical in quality to a Goldberg unlock, with no manual path configuration required.
+  2. CreamAPI and SmartSteamEmu installs are detected automatically by path discovery and their unlocks fire the same premium popup.
+  3. When a legitimate Steam game is also running a Goldberg or CreamAPI emulator alongside it (unusual but real-world), exactly one popup fires per logical unlock — not two or three.
+**Plans**: TBD
+
+### Phase 4: Polish & Distribution
+**Goal**: Any user can install Hallmark from a GitHub Release via a double-click NSIS installer or a portable zip, verify their installation fires a popup immediately via the test trigger, opt into start-with-Windows, receive in-app update prompts, and be guided through path discovery on first run — making the public release genuinely usable without a README deep-dive.
+**Depends on**: Phase 3
+**Requirements**: POL-01, POL-02, DIST-01, DIST-02, DIST-03, DIST-04
+**Success Criteria** (what must be TRUE):
+  1. A user can click "Fire test popup" from the tray menu and see a sample unlock popup fire through the full pipeline, confirming their install is working without needing to trigger a real game unlock.
+  2. The start-with-Windows toggle in settings causes Hallmark to start automatically on login (registry `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` entry written/removed); toggling it off removes the entry cleanly.
+  3. A GitHub Release tag push triggers a GitHub Actions workflow that produces both an NSIS installer `.exe` and a portable `.zip`, attaches them to the release, and publishes `latest.json` for the auto-updater.
+  4. When a newer version is available on GitHub Releases, Hallmark prompts the user to install the update in-app via `tauri-plugin-updater`; the update installs and restarts without requiring manual download.
+  5. On first launch, the path-discovery wizard scans for Steam library folders and Goldberg/CreamAPI/SmartSteamEmu installations and presents what was found (or not found), so users with zero detected paths see an immediate actionable message rather than silent failure.
+**Plans**: TBD
+
+## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 1 → 2 → 3 → 4
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 1. Detection Pipeline Foundation | 0/TBD | Not started | - |
+| 2. Premium UI — Popup, Companion & Game Session | 0/TBD | Not started | - |
+| 3. Remaining Source Adapters | 0/TBD | Not started | - |
+| 4. Polish & Distribution | 0/TBD | Not started | - |
