@@ -20,6 +20,8 @@
 //! three bounds are required for that. `'static` is satisfied because adapters carry
 //! no borrowed data — only owned `Vec<PathBuf>` and `Arc<RwLock<...>>` interiors.
 
+pub mod goldberg;
+
 use std::path::PathBuf;
 use tokio::sync::mpsc;
 
