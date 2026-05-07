@@ -15,7 +15,7 @@ tauri-build = { version = "2.6", features = [] }
 
 [dependencies]
 tauri                 = { version = "2.11", features = [] }
-tokio                 = { version = "1.52", features = ["rt-multi-thread", "sync", "macros", "time", "fs"] }
+tokio                 = { version = "1.52", features = ["rt-multi-thread", "sync", "macros", "time", "fs", "signal"] }
 notify                = "8.2"
 notify-debouncer-full = "0.7"
 serde                 = { version = "1.0", features = ["derive"] }
@@ -43,8 +43,9 @@ custom-protocol = ["tauri/custom-protocol"]
 name = "hallmark"
 path = "src/main.rs"
 
-# NOTE: An additional `[[bin]] name = "hallmark-cli"` entry is added by Plan 05 once
-# bin/hallmark-cli.rs exists. Do NOT add it now — cargo errors on missing bin paths.
+[[bin]]
+name = "hallmark-cli"
+path = "src/bin/hallmark-cli.rs"
 
 [lib]
 name       = "hallmark_lib"

@@ -73,6 +73,19 @@ impl SqliteStore {
         let n: i64 = conn.query_row("SELECT COUNT(*) FROM unlock_history", [], |row| row.get(0))?;
         Ok(n)
     }
+
+    /// Run a closure against the underlying connection. Used by the CLI binary and
+    /// the `queries` submodule to invoke typed query helpers (e.g.
+    /// `queries::create_session`) without exposing the connection mutex publicly.
+    ///
+    /// The mutex is held for the duration of the closure; keep the closure short.
+    pub fn with_conn<F, T>(&self, f: F) -> anyhow::Result<T>
+    where
+        F: FnOnce(&Connection) -> anyhow::Result<T>,
+    {
+        let conn = self.conn.lock().unwrap();
+        f(&conn)
+    }
 }
 
 #[cfg(test)]
