@@ -30,7 +30,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Unlocking the same achievement simultaneously via two simulated adapter sources (cross-source dedup test) produces exactly one event, not two.
   5. All discovered paths (Steam library folders, Goldberg default + redirect paths) are logged at startup so silent zero-popup failures can be diagnosed.
 **Plans**: 5 plans
-  - [ ] 01-01-PLAN.md — Tauri/Rust scaffold + dep pinning + A4 Goldberg schema empirical check
+  - [x] 01-01-PLAN.md — Tauri/Rust scaffold + dep pinning + A4 Goldberg schema empirical check
   - [ ] 01-02-PLAN.md — SourceAdapter trait + RawUnlockEvent types + SqliteStore + 001 migration
   - [ ] 01-03-PLAN.md — Path discovery (registry + libraryfolders.vdf both locations + local_save.txt resolution)
   - [ ] 01-04-PLAN.md — GoldbergAdapter (baseline seed + content-hash dedup) + WatcherCore (notify-debouncer-full 500ms)

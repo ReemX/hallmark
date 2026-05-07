@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Roadmap created; ROADMAP.md, STATE.md, and REQUIREMENTS.md traceability written
-last_updated: "2026-05-07T22:03:14.023Z"
-last_activity: 2026-05-07 -- Phase 1 planning complete
+last_updated: "2026-05-07T22:22:46.929Z"
+last_activity: 2026-05-07
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 5
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 20
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-07)
 
 **Core value:** Make PC achievement unlocks feel as satisfying as a PS5 trophy ding — every time, in every supported game.
-**Current focus:** Phase 1 — Detection Pipeline Foundation
+**Current focus:** Phase 01 — detection-pipeline-foundation
 
 ## Current Position
 
-Phase: 1 of 4 (Detection Pipeline Foundation)
-Plan: 0 of TBD in current phase
+Phase: 01 (detection-pipeline-foundation) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-05-07 -- Phase 1 planning complete
+Last activity: 2026-05-07
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 20%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: —
 
 *Updated after each plan completion*
+| Phase 01 P01 | 10 | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,9 @@ Recent decisions affecting current work:
 - Init: File watcher only — no Steam Web API (real-time, offline, emulator coverage in one mechanism)
 - Init: Signature style locked (brand identity; no theme knobs in v1)
 - Init: Goldberg first in Phase 1 (easiest adapter, plain JSON, well-documented paths)
+- [Phase ?]: Plan 01-01: Pinned tauri-build to 2.6 (independent version track from tauri runtime 2.11)
+- [Phase ?]: Plan 01-01: Goldberg state-file schema A4 resolved by direct observation (3 real gbe_fork saves) — earned/earned_time confirmed
+- [Phase ?]: Plan 01-01: Placeholder icon.ico + dist/index.html committed to satisfy tauri-build and tauri::generate_context!() — Phase 4 replaces with real branding
 
 ### Pending Todos
 
@@ -82,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-07
+Last session: 2026-05-07T22:22:41.703Z
 Stopped at: Roadmap created; ROADMAP.md, STATE.md, and REQUIREMENTS.md traceability written
 Resume file: None

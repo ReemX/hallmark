@@ -7,7 +7,7 @@
 
 ### Detection
 
-- [ ] **DETECT-01**: Real-time watcher detects unlocks from Goldberg SteamEmu output, including default `%APPDATA%\Goldberg SteamEmu Saves\` and `local_save.txt` redirected paths
+- [x] **DETECT-01**: Real-time watcher detects unlocks from Goldberg SteamEmu output, including default `%APPDATA%\Goldberg SteamEmu Saves\` and `local_save.txt` redirected paths
 - [ ] **DETECT-02**: Real-time watcher detects unlocks from legitimate Steam (binary VDF parser of `userdata/<steamid>/<appid>/remote/`, mtime trigger via `appcache/stats`)
 - [ ] **DETECT-03**: Real-time watcher detects unlocks from CreamAPI per-appid output
 - [ ] **DETECT-04**: Real-time watcher detects unlocks from SmartSteamEmu per-persona output
@@ -93,7 +93,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DETECT-01 | Phase 1 | Pending |
+| DETECT-01 | Phase 1 | Complete |
 | DETECT-02 | Phase 3 | Pending |
 | DETECT-03 | Phase 3 | Pending |
 | DETECT-04 | Phase 3 | Pending |
