@@ -915,3 +915,23 @@ mod tests_goldberg {
         );
     }
 }
+
+// ---- Public test helpers (used by integration tests in src-tauri/tests/) ----
+//
+// These are thin shims around `pub(crate)` internals so external integration tests
+// can drive the discovery pipeline against fixture directories without needing
+// access to private items.
+
+/// Public test entry: invoke `scan_local_save_redirects` against the given
+/// libraries. Returns the resolved `Vec<GoldbergRedirect>`. Intended for
+/// integration-test use only; production code should call `discover()`.
+pub fn scan_local_save_redirects_pub_for_tests(libraries: &[PathBuf]) -> Vec<GoldbergRedirect> {
+    scan_local_save_redirects(libraries)
+}
+
+/// Public test entry: invoke `log_discovery` against a synthesized
+/// `DiscoveredPaths`. Returns nothing (logs only). Used by SC5 to drive
+/// the same logging path that `discover()` uses.
+pub fn log_discovery_pub_for_tests(d: &DiscoveredPaths) {
+    log_discovery(d);
+}
