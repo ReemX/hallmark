@@ -365,7 +365,12 @@ pub(crate) fn appmanifest_lookup(library: &Path) -> HashMap<String, u64> {
             .map(|s| s.to_string());
 
         if let (Some(id), Some(dir)) = (appid, installdir) {
-            map.insert(dir, id);
+            // BL-01: Normalise key to lowercase. Windows is case-insensitive, but the
+            // string in `installdir` may differ in case from the actual on-disk
+            // directory segment (e.g., user copied a backup, SMB share normalisation,
+            // Steam writing one case while the user-renamed dir uses another).
+            // `extract_installdir_from_dll_path` lowercases its output too.
+            map.insert(dir.to_ascii_lowercase(), id);
         }
     }
     map
@@ -466,7 +471,9 @@ fn scan_local_save_redirects(libraries: &[PathBuf]) -> Vec<GoldbergRedirect> {
                     continue;
                 }
             };
-            let app_id = match manifest_map.get(&installdir).copied() {
+            // BL-01: Look up using lowercase key to match the case-normalised
+            // insertion in `appmanifest_lookup`.
+            let app_id = match manifest_map.get(&installdir.to_ascii_lowercase()).copied() {
                 Some(id) => id,
                 None => {
                     tracing::warn!(
@@ -644,15 +651,53 @@ mod tests_goldberg {
         write_appmanifest(&lib, 480, "Spacewar");
         write_appmanifest(&lib, 730, "Counter-Strike Global Offensive");
 
+        // BL-01: keys are lowercased on insert; lookup must match.
         let map = appmanifest_lookup(&lib);
-        assert_eq!(map.get("Spacewar").copied(), Some(480));
+        assert_eq!(map.get("spacewar").copied(), Some(480));
         assert_eq!(
-            map.get("Counter-Strike Global Offensive").copied(),
+            map.get("counter-strike global offensive").copied(),
             Some(730)
         );
+        // Sanity: the original-case key should NOT be present (case-insensitive lookup
+        // is enforced by lowercasing on both sides).
+        assert_eq!(map.get("Spacewar").copied(), None);
         assert_eq!(map.get("UnknownGame").copied(), None);
 
         let _ = fs::remove_dir_all(&lib);
+    }
+
+    /// BL-01 regression: appmanifest writes `installdir = "FooGame"` but the on-disk
+    /// directory is `foogame`. With case-sensitive comparison the redirect would be
+    /// dropped; with the BL-01 fix it must resolve correctly.
+    #[test]
+    fn local_save_resolves_when_appmanifest_case_differs_from_disk() {
+        let lib = fresh_tmp("lib-case");
+        let common = lib.join("steamapps").join("common");
+        // On-disk directory is lowercase `foogame`; appmanifest will record it as
+        // mixed-case `FooGame`. Windows considers them the same path, but the
+        // pre-fix code path-stringified the on-disk segment and looked it up
+        // with case-sensitive `HashMap::get`, which missed.
+        let game_bin = common.join("foogame").join("bin");
+        fs::create_dir_all(&game_bin).unwrap();
+        fs::write(game_bin.join("steam_api64.dll"), b"placeholder").unwrap();
+        // Note the case mismatch: appmanifest "FooGame" vs on-disk "foogame".
+        write_appmanifest(&lib, 55555, "FooGame");
+
+        let target = fresh_tmp("case-save");
+        let target_str = target.to_string_lossy().replace('/', "\\");
+        fs::write(game_bin.join("local_save.txt"), &target_str).unwrap();
+
+        let redirects = scan_local_save_redirects(&[lib.clone()]);
+        assert_eq!(
+            redirects.len(),
+            1,
+            "case-mismatched installdir should still resolve via case-insensitive lookup; got {:?}",
+            redirects
+        );
+        assert_eq!(redirects[0].app_id, 55555);
+
+        let _ = fs::remove_dir_all(&lib);
+        let _ = fs::remove_dir_all(&target);
     }
 
     #[test]
