@@ -57,7 +57,11 @@ impl SqliteStore {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)?
             .as_secs() as i64;
-        let conn = self.conn.lock().unwrap();
+        // WR-05: recover from poisoning rather than propagating a panic. A panicked
+        // closure (e.g. a query helper hitting unexpected data) would otherwise
+        // poison the mutex for the rest of the daemon process, taking down every
+        // subsequent record_unlock / count_unlocks / with_conn call.
+        let conn = self.conn.lock().unwrap_or_else(|p| p.into_inner());
         let rows_changed = conn.execute(
             "INSERT OR IGNORE INTO unlock_history
                 (app_id, ach_api_name, source, unlocked_at, session_id, notified)
@@ -69,7 +73,8 @@ impl SqliteStore {
 
     /// Count rows in `unlock_history`. For tests + diagnostic logging.
     pub fn count_unlocks(&self) -> anyhow::Result<i64> {
-        let conn = self.conn.lock().unwrap();
+        // WR-05: recover from poisoning (see record_unlock).
+        let conn = self.conn.lock().unwrap_or_else(|p| p.into_inner());
         let n: i64 = conn.query_row("SELECT COUNT(*) FROM unlock_history", [], |row| row.get(0))?;
         Ok(n)
     }
@@ -78,12 +83,20 @@ impl SqliteStore {
     /// the `queries` submodule to invoke typed query helpers (e.g.
     /// `queries::create_session`) without exposing the connection mutex publicly.
     ///
-    /// The mutex is held for the duration of the closure; keep the closure short.
+    /// The mutex is held for the duration of the closure; keep the closure short
+    /// and synchronous (no `await` inside — the lock is `std::sync::Mutex`, not
+    /// `tokio::sync::Mutex`).
+    ///
+    /// WR-05: If the closure panics, the underlying Mutex becomes poisoned. We
+    /// recover via `unwrap_or_else(|p| p.into_inner())`; the workspace
+    /// `Cargo.toml` also sets `panic = "abort"` for release builds, which sidesteps
+    /// the poisoning case entirely. In debug builds and tests, callers should
+    /// still ensure their closures cannot panic.
     pub fn with_conn<F, T>(&self, f: F) -> anyhow::Result<T>
     where
         F: FnOnce(&Connection) -> anyhow::Result<T>,
     {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().unwrap_or_else(|p| p.into_inner());
         f(&conn)
     }
 }
