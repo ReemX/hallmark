@@ -376,7 +376,7 @@ pub async fn run_pipeline(
             evt.app_id,
             &evt.ach_api_name,
             evt.source.as_str(),
-            Some(&session_id),
+            &session_id,
         ) {
             Ok(v) => v,
             Err(e) => {

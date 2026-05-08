@@ -45,14 +45,16 @@ impl SqliteStore {
     /// `(app_id, ach_api_name, session_id)`. Uses `INSERT OR IGNORE` so a dedup
     /// collision is not an error.
     ///
-    /// `session_id = None` will always insert (NULL is distinct from itself in
-    /// SQLite UNIQUE INDEX); production callers (Plan 05) always pass `Some(_)`.
+    /// WR-11: `session_id` is required (`&str`, not `Option<&str>`). Allowing
+    /// NULL here would silently disable the UNIQUE INDEX dedup because SQLite
+    /// treats NULL as distinct from itself in unique indexes. The schema also
+    /// enforces this at the column level (NOT NULL).
     pub fn record_unlock(
         &self,
         app_id: u64,
         ach_api_name: &str,
         source: &str,
-        session_id: Option<&str>,
+        session_id: &str,
     ) -> anyhow::Result<bool> {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)?
@@ -121,7 +123,7 @@ mod tests {
     fn record_unlock_inserts_first_call_returns_true() {
         let s = SqliteStore::open_in_memory().unwrap();
         let inserted = s
-            .record_unlock(480, "ACH_X", "goldberg", Some("session-1"))
+            .record_unlock(480, "ACH_X", "goldberg", "session-1")
             .unwrap();
         assert!(inserted, "first insert should report Ok(true)");
         assert_eq!(s.count_unlocks().unwrap(), 1);
@@ -131,11 +133,11 @@ mod tests {
     fn record_unlock_dedup_via_unique_index() {
         let s = SqliteStore::open_in_memory().unwrap();
         assert!(s
-            .record_unlock(480, "ACH_X", "goldberg", Some("session-1"))
+            .record_unlock(480, "ACH_X", "goldberg", "session-1")
             .unwrap());
         // Same triplet again — UNIQUE INDEX collision; INSERT OR IGNORE returns 0 rows.
         let inserted_again = s
-            .record_unlock(480, "ACH_X", "goldberg", Some("session-1"))
+            .record_unlock(480, "ACH_X", "goldberg", "session-1")
             .unwrap();
         assert!(!inserted_again, "duplicate insert should report Ok(false)");
         assert_eq!(s.count_unlocks().unwrap(), 1, "no new row should exist");
@@ -145,26 +147,33 @@ mod tests {
     fn record_unlock_different_session_succeeds() {
         let s = SqliteStore::open_in_memory().unwrap();
         assert!(s
-            .record_unlock(480, "ACH_X", "goldberg", Some("session-1"))
+            .record_unlock(480, "ACH_X", "goldberg", "session-1")
             .unwrap());
         // Same (app_id, ach_api_name) but different session — composite UNIQUE allows this.
         assert!(s
-            .record_unlock(480, "ACH_X", "goldberg", Some("session-2"))
+            .record_unlock(480, "ACH_X", "goldberg", "session-2")
             .unwrap());
         assert_eq!(s.count_unlocks().unwrap(), 2);
     }
 
+    /// WR-11: session_id is required at the API and at the schema. Verifying both
+    /// the type-level constraint (compile-time) and the schema-level NOT NULL
+    /// (runtime, via a manual INSERT bypassing the typed API).
     #[test]
-    fn record_unlock_null_session_treated_as_distinct() {
-        // Documented SQLite behavior: NULL is distinct from NULL in UNIQUE INDEX.
-        // Plan 05 always passes Some(_) so this only matters as future-regression armor.
+    fn record_unlock_null_session_rejected_by_schema() {
         let s = SqliteStore::open_in_memory().unwrap();
-        assert!(s.record_unlock(480, "ACH_X", "goldberg", None).unwrap());
-        assert!(s.record_unlock(480, "ACH_X", "goldberg", None).unwrap());
-        assert_eq!(
-            s.count_unlocks().unwrap(),
-            2,
-            "two NULL session_ids should both insert (SQLite NULL semantics)"
+        // Bypass the typed record_unlock to attempt a NULL insert directly.
+        let conn = s.conn.lock().unwrap();
+        let result = conn.execute(
+            "INSERT INTO unlock_history
+                (app_id, ach_api_name, source, unlocked_at, session_id, notified)
+             VALUES (?1, ?2, ?3, ?4, NULL, 0)",
+            params![480_i64, "ACH_X", "goldberg", 1700000000_i64],
+        );
+        assert!(
+            result.is_err(),
+            "NULL session_id must be rejected by NOT NULL constraint; got {:?}",
+            result
         );
     }
 }

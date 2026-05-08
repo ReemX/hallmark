@@ -96,12 +96,9 @@ mod tests {
     #[test]
     fn unlock_count_for_session_filters_correctly() {
         let s = fresh_store();
-        s.record_unlock(480, "ACH_A", "goldberg", Some("s1"))
-            .unwrap();
-        s.record_unlock(480, "ACH_B", "goldberg", Some("s1"))
-            .unwrap();
-        s.record_unlock(480, "ACH_C", "goldberg", Some("s2"))
-            .unwrap();
+        s.record_unlock(480, "ACH_A", "goldberg", "s1").unwrap();
+        s.record_unlock(480, "ACH_B", "goldberg", "s1").unwrap();
+        s.record_unlock(480, "ACH_C", "goldberg", "s2").unwrap();
         let conn = s.conn.lock().unwrap();
         assert_eq!(unlock_count_for_session(&conn, "s1").unwrap(), 2);
         assert_eq!(unlock_count_for_session(&conn, "s2").unwrap(), 1);
@@ -111,10 +108,8 @@ mod tests {
     #[test]
     fn mark_notified_updates_only_matching_row() {
         let s = fresh_store();
-        s.record_unlock(480, "ACH_A", "goldberg", Some("s1"))
-            .unwrap();
-        s.record_unlock(480, "ACH_B", "goldberg", Some("s1"))
-            .unwrap();
+        s.record_unlock(480, "ACH_A", "goldberg", "s1").unwrap();
+        s.record_unlock(480, "ACH_B", "goldberg", "s1").unwrap();
         let conn = s.conn.lock().unwrap();
         mark_notified(&conn, 480, "ACH_A", "s1").unwrap();
         let notified_a: i64 = conn
