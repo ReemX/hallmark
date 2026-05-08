@@ -300,7 +300,8 @@ fn goldberg_default_roots() -> Vec<PathBuf> {
 /// Build a `installdir → appid` map for one Steam library by scanning every
 /// `<library>/steamapps/appmanifest_*.acf` file. Used by `scan_local_save_redirects`
 /// to resolve the appid for each discovered redirect.
-pub(crate) fn appmanifest_lookup(library: &Path) -> HashMap<String, u64> {
+// Visibility relaxed from pub(crate) to pub for game_detect/process_scan.rs (Phase 2 Plan 03).
+pub fn appmanifest_lookup(library: &Path) -> HashMap<String, u64> {
     use keyvalues_parser::Vdf;
 
     let mut map = HashMap::new();
