@@ -20,6 +20,7 @@ pub mod popup_queue;   // Plan 05 — drain task with adaptive compression + 100
 pub mod ui;            // Plan 05 — popup + companion WebviewWindowBuilder + HWND patch
 pub mod game_detect;   // Plan 03 — sysinfo + Steam state hybrid + appmanifest match
 
+use tauri::{Listener, Manager};
 use tracing_subscriber::EnvFilter;
 
 // ============================================================================
@@ -134,29 +135,205 @@ pub fn init_tracing_for_tests() {
         .try_init();
 }
 
-/// Production entry — invoked by `bin/main.rs`. Starts the Tauri shell.
-///
-/// Phase 1: Tauri starts but creates NO windows. This is configured in
-/// `tauri.conf.json` via `app.windows = []` and `app.security.csp = null`,
-/// both of which are **intentional for Phase 1's headless backend** (IN-06).
-/// Phase 2 will add the popup overlay window and a CSP appropriate to it.
-/// The process stays alive via Tauri's run loop; Plans 04/05 spawn background
-/// tasks inside the `setup()` closure.
+/// Production entry — invoked by `bin/main.rs`. Starts the Tauri shell with
+/// Phase 2 subsystems wired:
+///   • SQLite store (with 001 + 002 migrations).
+///   • Path discovery (Phase 1) — uses real DiscoveredPaths fields + paths::goldberg_* helpers.
+///   • Goldberg adapter + watcher + pipeline (Phase 1).
+///   • Popup overlay + companion windows (Plan 05).
+///   • SchemaCache + AudioDispatcher (Plans 02, 04).
+///   • popup_queue + game_detect tokio tasks (Plans 03, 05).
+///   • Tauri commands for companion data + prefs IO (Plan 06).
+///   • game-started listener that hands off pid from Plan 03's payload to
+///     popup_queue's current_pid mutex (POPUP-03 functional routing).
 pub fn run() {
     init_tracing();
     tracing::info!(
         version = env!("CARGO_PKG_VERSION"),
-        "Hallmark starting (Phase 1 — backend only, no UI)"
+        "Hallmark starting (Phase 2 — full UI pipeline)"
     );
 
     tauri::Builder::default()
-        .setup(|_app| {
-            // Plans 04 + 05 attach pipeline tasks here:
-            //   tokio::spawn(watcher::run_watcher(...));
-            //   tokio::spawn(cli::run_cli_sink(...));
+        .invoke_handler(tauri::generate_handler![
+            commands::get_companion_state,
+            commands::set_companion_prefs_cmd,
+            commands::get_companion_prefs_cmd,
+        ])
+        .setup(|app| {
+            let app_handle = app.handle().clone();
+
+            // ----- 1. Resolve user data dir + open store -----
+            let db_dir = dirs::data_dir()
+                .ok_or_else(|| anyhow::anyhow!("data_dir unavailable"))?
+                .join("Hallmark");
+            std::fs::create_dir_all(&db_dir)?;
+            let db_path = db_dir.join("hallmark.db");
+            let store = std::sync::Arc::new(store::SqliteStore::open(&db_path)?);
+            tracing::info!(path = %db_path.display(), "store opened (001 + 002 migrations applied)");
+
+            // ----- 2. Create session -----
+            let session_id = uuid::Uuid::new_v4().to_string();
+            store.with_conn(|c| store::queries::create_session(c, &session_id, None))?;
+            tracing::info!(session_id = %session_id, "session created");
+
+            // ----- 3. Path discovery — canonical DiscoveredPaths -----
+            let discovery = paths::discover();
             tracing::info!(
-                "Tauri setup complete (no background tasks attached in Phase 1 scaffold)"
+                steam_libraries = discovery.steam_libraries.len(),
+                goldberg_save_roots = discovery.goldberg_save_roots.len(),
+                goldberg_redirects = discovery.goldberg_local_save_redirects.len(),
+                "path discovery complete"
             );
+
+            // ----- 4. Bind goldberg helpers BEFORE moving into closures (B-3 fix) -----
+            // The struct does NOT have `.goldberg_roots` or `.redirect_map` fields —
+            // those were fictional in the prior plan. Use the public helpers.
+            let steam_libraries = discovery.steam_libraries.clone();
+            let goldberg_paths = paths::goldberg_watch_paths(&discovery);
+            let goldberg_map = paths::goldberg_redirect_map(&discovery);
+
+            // ----- 5. Build adapter list -----
+            let goldberg_adapter: std::sync::Arc<dyn sources::SourceAdapter> =
+                std::sync::Arc::new(sources::goldberg::GoldbergAdapter::new(
+                    goldberg_paths.clone(),
+                    goldberg_map.clone(),
+                ));
+            let adapters = vec![goldberg_adapter];
+
+            // ----- 6. Channels (cli mirrors this topology) -----
+            let (raw_tx, raw_rx) = tokio::sync::mpsc::channel::<sources::RawUnlockEvent>(64);
+            let (sink_tx, sink_rx) = tokio::sync::mpsc::channel::<sources::RawUnlockEvent>(64);
+
+            // ----- 7. Audio dispatcher (best-effort; popups go silent if device unavailable) -----
+            let audio_opt: Option<std::sync::Arc<audio::AudioDispatcher>> =
+                match audio::AudioDispatcher::new() {
+                    Ok(a) => Some(std::sync::Arc::new(a)),
+                    Err(e) => {
+                        tracing::warn!(error = %e, "audio init failed; popups will be visual-only this session");
+                        None
+                    }
+                };
+
+            // ----- 8. Schema cache -----
+            let schema_cache = schema::SchemaCache::new(store.clone())?;
+
+            // ----- 9. Windows -----
+            ui::create_popup_window(&app_handle)?;
+            ui::create_companion_window(&app_handle)?;
+            tracing::info!("popup + companion windows created (hidden)");
+
+            // ----- 10. AppState management -----
+            app.manage(AppState {
+                store: store.clone(),
+                schema: schema_cache.clone(),
+                session_id: session_id.clone(),
+            });
+
+            // ----- 11. Shared current_pid for popup placement -----
+            let current_pid: std::sync::Arc<tokio::sync::Mutex<Option<u32>>> =
+                std::sync::Arc::new(tokio::sync::Mutex::new(None));
+
+            // ----- 12. Spawn pipeline tasks -----
+            tokio::spawn(watcher::run_watcher(adapters, raw_tx));
+            tracing::info!("spawned run_watcher");
+
+            tokio::spawn(watcher::run_pipeline(
+                raw_rx,
+                store.clone(),
+                session_id.clone(),
+                sink_tx,
+                std::time::Duration::from_secs(10),
+            ));
+            tracing::info!("spawned run_pipeline");
+
+            if let Some(audio_arc) = audio_opt {
+                let app_for_queue = app_handle.clone();
+                let store_for_queue = store.clone();
+                let session_for_queue = session_id.clone();
+                let schema_for_queue = schema_cache.clone();
+                let pid_for_queue = current_pid.clone();
+                tokio::spawn(async move {
+                    popup_queue::run(
+                        app_for_queue, sink_rx, schema_for_queue, audio_arc,
+                        store_for_queue, session_for_queue, pid_for_queue,
+                    ).await;
+                });
+                tracing::info!("spawned popup_queue");
+            } else {
+                // Drain sink so run_pipeline doesn't backpressure when audio is unavailable.
+                tokio::spawn(async move {
+                    let mut rx = sink_rx;
+                    while let Some(_) = rx.recv().await {
+                        tracing::debug!("event drained (no audio device — popup_queue not started)");
+                    }
+                });
+            }
+
+            // ----- 13. game_detect task -----
+            let app_for_detect = app_handle.clone();
+            let store_for_detect = store.clone();
+            let libraries_for_detect = steam_libraries.clone();
+            let goldberg_for_detect = goldberg_map.clone();
+            tokio::spawn(async move {
+                game_detect::run(
+                    app_for_detect, store_for_detect,
+                    libraries_for_detect, goldberg_for_detect,
+                ).await;
+            });
+            tracing::info!("spawned game_detect");
+
+            // ----- 14. game-started listener: extract pid + write current_pid + spawn schema::resolve -----
+            // The payload now carries BOTH app_id AND pid (Plan 03 B-1 fix). Plan 07
+            // populates current_pid from this field so popup_queue routes popups to
+            // the running game's monitor (POPUP-03 functional, not just helpers-exist).
+            let pid_for_listener = current_pid.clone();
+            let schema_for_listener = schema_cache.clone();
+            let app_for_listener = app_handle.clone();
+            let goldberg_redirect_for_listener = goldberg_map.clone();
+            let _unlisten_started = app.listen("game-started", move |event: tauri::Event| {
+                let payload: serde_json::Value = match serde_json::from_str(event.payload()) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        tracing::warn!(error = %e, "failed to parse game-started payload");
+                        return;
+                    }
+                };
+                let Some(app_id) = payload.get("app_id").and_then(|v| v.as_u64()) else {
+                    tracing::warn!("game-started payload missing app_id");
+                    return;
+                };
+                // Plan 03 B-1 fix: payload.pid is present.
+                let pid_opt = payload.get("pid").and_then(|v| v.as_u64()).map(|p| p as u32);
+
+                // Write pid into shared mutex so popup_queue's position_popup can
+                // resolve the game's HWND on the next fire (POPUP-03 functional routing).
+                if let Some(pid) = pid_opt {
+                    let pid_handle = pid_for_listener.clone();
+                    tokio::spawn(async move {
+                        let mut guard = pid_handle.lock().await;
+                        *guard = Some(pid);
+                        tracing::info!(app_id, pid, "current_pid updated for popup placement");
+                    });
+                } else {
+                    tracing::warn!(app_id, "game-started payload missing pid; popup falls back to last-set position");
+                }
+
+                // Spawn schema resolution per D-25.
+                let schema_clone = schema_for_listener.clone();
+                let app_clone = app_for_listener.clone();
+                // Find Goldberg JSON paths for this app_id.
+                let goldberg_paths_for_app: Vec<std::path::PathBuf> =
+                    goldberg_redirect_for_listener.iter()
+                        .filter(|(_, gid)| **gid == app_id)
+                        .map(|(path, _)| path.join("achievements.json"))
+                        .collect();
+                tokio::spawn(async move {
+                    tracing::info!(app_id, count = goldberg_paths_for_app.len(), "starting schema resolve");
+                    schema_clone.resolve(app_clone, app_id, goldberg_paths_for_app).await;
+                });
+            });
+
+            tracing::info!("Phase 2 setup complete; all subsystems running");
             Ok(())
         })
         .run(tauri::generate_context!())
