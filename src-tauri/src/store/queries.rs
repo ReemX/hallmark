@@ -73,6 +73,121 @@ pub fn unlock_count_for_session(conn: &Connection, session_id: &str) -> anyhow::
     Ok(n)
 }
 
+// ============================================================================
+// Phase 2 additions: 100%-completion flag (D-11) + companion preferences (D-15, D-18) + earned-count.
+// Settings table re-used for completion flag (key='completion_<app_id>', value='1').
+// companion_prefs is its own table per migration 002.
+// ============================================================================
+
+/// Mark the 100% celebration as fired for a given app. Idempotent —
+/// INSERT OR REPLACE on the settings (key, value) PK. Plan 05's popup_queue
+/// calls this after emitting the completion variant popup.
+pub fn mark_completion_fired(conn: &Connection, app_id: u64) -> anyhow::Result<()> {
+    let _app_id_i64 = i64::try_from(app_id)?; // overflow guard
+    let key = format!("completion_{}", app_id);
+    conn.execute(
+        "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, '1')",
+        params![key],
+    )?;
+    Ok(())
+}
+
+/// Check whether the 100% celebration has already been fired for a game
+/// (D-11: once per app_id ever; wiped DB re-fires once).
+pub fn is_completion_fired(conn: &Connection, app_id: u64) -> anyhow::Result<bool> {
+    let _app_id_i64 = i64::try_from(app_id)?;
+    let key = format!("completion_{}", app_id);
+    let result = conn.query_row(
+        "SELECT value FROM settings WHERE key = ?1",
+        params![key],
+        |r| r.get::<_, String>(0),
+    );
+    match result {
+        Ok(v) => Ok(v == "1"),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(false),
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Companion window per-game preferences. Mirrors the companion_prefs row.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CompanionPrefs {
+    pub app_id: u64,
+    pub filter: Option<String>,       // 'all' | 'earned' | 'locked'
+    pub sort: Option<String>,         // 'earned-first' | 'a-z'
+    pub expanded_id: Option<String>,  // last-expanded ach_api_name
+    pub width: Option<i32>,
+    pub height: Option<i32>,
+    pub pos_x: Option<i32>,
+    pub pos_y: Option<i32>,
+}
+
+pub fn set_companion_prefs(conn: &Connection, prefs: &CompanionPrefs) -> anyhow::Result<()> {
+    let app_id_i64 = i64::try_from(prefs.app_id)?;
+    conn.execute(
+        "INSERT OR REPLACE INTO companion_prefs
+           (app_id, filter, sort, expanded_id, width, height, pos_x, pos_y)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![
+            app_id_i64,
+            prefs.filter,
+            prefs.sort,
+            prefs.expanded_id,
+            prefs.width,
+            prefs.height,
+            prefs.pos_x,
+            prefs.pos_y,
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn get_companion_prefs(
+    conn: &Connection,
+    app_id: u64,
+) -> anyhow::Result<Option<CompanionPrefs>> {
+    let app_id_i64 = i64::try_from(app_id)?;
+    let row_result = conn.query_row(
+        "SELECT app_id, filter, sort, expanded_id, width, height, pos_x, pos_y
+         FROM companion_prefs WHERE app_id = ?1",
+        params![app_id_i64],
+        |r| {
+            Ok(CompanionPrefs {
+                app_id: r.get::<_, i64>(0)? as u64,
+                filter: r.get(1)?,
+                sort: r.get(2)?,
+                expanded_id: r.get(3)?,
+                width: r.get(4)?,
+                height: r.get(5)?,
+                pos_x: r.get(6)?,
+                pos_y: r.get(7)?,
+            })
+        },
+    );
+    match row_result {
+        Ok(p) => Ok(Some(p)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Count earned achievements for one (app_id, session_id) pair — used by
+/// Plan 05 to detect when the burst's last unlock completes the set
+/// (compare to schema_count_for_app from cache.rs).
+pub fn count_earned_for_app_session(
+    conn: &Connection,
+    app_id: u64,
+    session_id: &str,
+) -> anyhow::Result<i64> {
+    let app_id_i64 = i64::try_from(app_id)?;
+    let n: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM unlock_history WHERE app_id = ?1 AND session_id = ?2",
+        params![app_id_i64, session_id],
+        |r| r.get(0),
+    )?;
+    Ok(n)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -136,5 +251,63 @@ mod tests {
             .unwrap();
         assert_eq!(notified_a, 1);
         assert_eq!(notified_b, 0);
+    }
+
+    #[test]
+    fn completion_fired_round_trip() {
+        let s = fresh_store();
+        s.with_conn(|c| {
+            assert!(!is_completion_fired(c, 480).unwrap(), "fresh DB has no completion flag");
+            mark_completion_fired(c, 480).unwrap();
+            assert!(is_completion_fired(c, 480).unwrap(), "after mark, flag is true");
+            assert!(!is_completion_fired(c, 999).unwrap(), "different app unaffected");
+            // Idempotent
+            mark_completion_fired(c, 480).unwrap();
+            assert!(is_completion_fired(c, 480).unwrap());
+            Ok(())
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn companion_prefs_round_trip() {
+        let s = fresh_store();
+        let prefs = CompanionPrefs {
+            app_id: 480,
+            filter: Some("earned".into()),
+            sort: Some("a-z".into()),
+            expanded_id: None,
+            width: Some(520),
+            height: Some(800),
+            pos_x: Some(100),
+            pos_y: Some(200),
+        };
+        s.with_conn(|c| {
+            assert!(get_companion_prefs(c, 480).unwrap().is_none());
+            set_companion_prefs(c, &prefs).unwrap();
+            assert_eq!(get_companion_prefs(c, 480).unwrap().as_ref(), Some(&prefs));
+            Ok(())
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn count_earned_for_app_session_isolates_apps_and_sessions() {
+        let s = fresh_store();
+        s.with_conn(|c| {
+            create_session(c, "sess-1", Some(480)).unwrap();
+            Ok(())
+        })
+        .unwrap();
+        assert!(s.record_unlock(480, "ACH_A", "goldberg", "sess-1").unwrap());
+        assert!(s.record_unlock(480, "ACH_B", "goldberg", "sess-1").unwrap());
+        assert!(s.record_unlock(999, "ACH_X", "goldberg", "sess-1").unwrap());
+        s.with_conn(|c| {
+            assert_eq!(count_earned_for_app_session(c, 480, "sess-1").unwrap(), 2);
+            assert_eq!(count_earned_for_app_session(c, 999, "sess-1").unwrap(), 1);
+            assert_eq!(count_earned_for_app_session(c, 480, "sess-2").unwrap(), 0);
+            Ok(())
+        })
+        .unwrap();
     }
 }
