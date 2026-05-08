@@ -247,20 +247,25 @@ impl SourceAdapter for GoldbergAdapter {
         };
 
         // Content-hash equality (REQ DETECT-06 second layer).
+        // BL-02: Compute hash but defer the *insert* until after a successful parse.
+        // Otherwise a partial/in-progress write that yields malformed JSON would update
+        // `last_hash` and short-circuit subsequent reads, violating the cache's invariant
+        // ("we have already processed this content"). On parse failure we leave
+        // `last_hash` untouched so the next event re-attempts.
         let hash: [u8; 32] = Sha256::digest(json.as_bytes()).into();
         {
-            let mut hashes = self.last_hash.write().await;
+            let hashes = self.last_hash.read().await;
             if hashes.get(&path) == Some(&hash) {
                 tracing::trace!(path = %path.display(), "content unchanged (hash match); skip");
                 return Ok(());
             }
-            hashes.insert(path.clone(), hash);
         }
 
         let state = match Self::parse_state(&json) {
             Ok(s) => s,
             Err(e) => {
                 tracing::warn!(path = %path.display(), error = %e, "state file parse failed");
+                // BL-02: do NOT update last_hash on parse failure.
                 return Ok(());
             }
         };
@@ -283,6 +288,13 @@ impl SourceAdapter for GoldbergAdapter {
             }
             baseline.insert(key, earned_now);
         }
+
+        // BL-02: Now that parse + diff + baseline-update succeeded, commit the hash so
+        // future identical reads short-circuit. If we crash between baseline-update
+        // and the hash insert, the worst case is one extra parse on the next event —
+        // which is harmless. If we had inserted earlier and crashed before parse,
+        // the malformed read would be silently treated as "processed" forever.
+        self.last_hash.write().await.insert(path.clone(), hash);
         Ok(())
     }
 }
