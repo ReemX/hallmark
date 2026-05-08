@@ -59,6 +59,12 @@ pub struct GoldbergAdapter {
     /// `paths::goldberg_redirect_map()`. Used as a fallback when a state file's
     /// parent directory name does not parse as u64.
     redirect_map: HashMap<PathBuf, u64>,
+    /// WR-08 / BL-03: cached watch path set, computed ONCE at construction. Resolves
+    /// `path.exists()` at startup and never re-stats on the hot dispatch path. Once
+    /// a path is cached, it is reported as a valid watch path for the adapter's
+    /// lifetime even if the directory is later renamed or deleted, so events
+    /// already buffered by `notify` are not silently dropped.
+    cached_watch_paths: Vec<PathBuf>,
     baseline: Arc<RwLock<HashMap<(u64, String), bool>>>,
     last_hash: Arc<RwLock<HashMap<PathBuf, [u8; 32]>>>,
 }
@@ -68,9 +74,18 @@ impl GoldbergAdapter {
     /// `redirect_map` is `HashMap<PathBuf, u64>` mapping each redirect target's
     /// parent directory to its resolved appid (built by `paths::goldberg_redirect_map`).
     pub fn new(roots: Vec<PathBuf>, redirect_map: HashMap<PathBuf, u64>) -> Self {
+        // WR-08: resolve `exists()` once at startup. After this, `watch_paths()`
+        // returns a clone of `cached_watch_paths` without further filesystem syscalls.
+        let mut cached: Vec<PathBuf> = roots.iter().filter(|p| p.exists()).cloned().collect();
+        for redirect_parent in redirect_map.keys() {
+            if redirect_parent.exists() && !cached.contains(redirect_parent) {
+                cached.push(redirect_parent.clone());
+            }
+        }
         Self {
             roots,
             redirect_map,
+            cached_watch_paths: cached,
             baseline: Arc::new(RwLock::new(HashMap::new())),
             last_hash: Arc::new(RwLock::new(HashMap::new())),
         }
@@ -114,14 +129,12 @@ impl SourceAdapter for GoldbergAdapter {
     }
 
     fn watch_paths(&self) -> Vec<PathBuf> {
-        // Watch both default roots AND redirect-target parent dirs (the latter via redirect_map keys).
-        let mut paths: Vec<PathBuf> = self.roots.iter().filter(|p| p.exists()).cloned().collect();
-        for redirect_parent in self.redirect_map.keys() {
-            if redirect_parent.exists() && !paths.contains(redirect_parent) {
-                paths.push(redirect_parent.clone());
-            }
-        }
-        paths
+        // WR-08 / BL-03: return the cached set computed at construction; do NOT re-stat
+        // on every call. Re-stating here was syscall-heavy on the dispatch hot path
+        // and silently dropped events when a watched root was renamed/deleted at
+        // runtime (the `notify` watch handle stayed valid; only this prefix-match
+        // was filtering events out).
+        self.cached_watch_paths.clone()
     }
 
     async fn seed_baseline(&self) -> anyhow::Result<()> {

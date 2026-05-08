@@ -62,8 +62,13 @@ pub async fn run_watcher(
         },
     )?;
 
-    let mut total_watched = 0usize;
-    for adapter in &adapters {
+    // BL-03 / WR-08: build the (adapter_idx, path) routing table ONCE, here. Once a
+    // path is registered with the debouncer it stays in this table for the watcher's
+    // lifetime — even if the directory is later renamed/deleted, events already
+    // buffered by `notify` will still route correctly. Filter `exists()` at register
+    // time only.
+    let mut path_owner: Vec<(usize, PathBuf)> = Vec::new();
+    for (idx, adapter) in adapters.iter().enumerate() {
         for path in adapter.watch_paths() {
             if !path.exists() {
                 tracing::warn!(adapter = adapter.name(), path = %path.display(),
@@ -74,7 +79,7 @@ pub async fn run_watcher(
                 Ok(()) => {
                     tracing::info!(adapter = adapter.name(), path = %path.display(),
                         "watching path recursively");
-                    total_watched += 1;
+                    path_owner.push((idx, path));
                 }
                 Err(e) => {
                     tracing::warn!(adapter = adapter.name(), path = %path.display(),
@@ -83,9 +88,33 @@ pub async fn run_watcher(
             }
         }
     }
+
+    // WR-09: detect adapter watch-path overlaps at startup. If a path under one adapter
+    // is an ancestor (or descendant) of another adapter's path, events for the
+    // overlapping subtree could be misrouted by a first-prefix-match policy. We log
+    // an error so the misconfiguration is visible and dispatch to ALL matching
+    // adapters below; downstream cross-source dedup is responsible for collapsing
+    // any duplicate events.
+    for (i, (a_idx, pa)) in path_owner.iter().enumerate() {
+        for (b_idx, pb) in path_owner.iter().skip(i + 1) {
+            if a_idx == b_idx {
+                continue;
+            }
+            if pa.starts_with(pb) || pb.starts_with(pa) {
+                tracing::error!(
+                    adapter_a = adapters[*a_idx].name(),
+                    adapter_b = adapters[*b_idx].name(),
+                    path_a = %pa.display(),
+                    path_b = %pb.display(),
+                    "adapter watch paths overlap; events may be routed to multiple adapters"
+                );
+            }
+        }
+    }
+
     tracing::info!(
         adapters = adapters.len(),
-        paths = total_watched,
+        paths = path_owner.len(),
         "WatcherCore active"
     );
 
@@ -95,7 +124,7 @@ pub async fn run_watcher(
             Ok(events) => {
                 for event in events {
                     for path in &event.event.paths {
-                        dispatch(&adapters, path.clone(), &raw_tx).await;
+                        dispatch(&adapters, &path_owner, path.clone(), &raw_tx).await;
                     }
                 }
             }
@@ -111,23 +140,37 @@ pub async fn run_watcher(
     Ok(())
 }
 
-/// Find the adapter whose `watch_paths()` prefix-matches `path`, then forward.
-/// O(adapters × paths_per_adapter); negligible with small adapter counts.
+/// BL-03: Scan the cached `path_owner` table (built once at startup) for prefix
+/// matches and forward to every owning adapter. WR-09: dispatching to ALL matches
+/// (not just the first) means overlapping adapter configurations do not silently
+/// drop events; downstream cross-source dedup collapses any duplicates.
 async fn dispatch(
     adapters: &[Arc<dyn SourceAdapter>],
+    path_owner: &[(usize, PathBuf)],
     path: PathBuf,
     raw_tx: &mpsc::Sender<RawUnlockEvent>,
 ) {
-    for adapter in adapters {
-        if adapter.watch_paths().iter().any(|wp| path.starts_with(wp)) {
+    let mut matched_any = false;
+    // Track which adapters have already received this event to avoid double-firing
+    // the same adapter when it has multiple overlapping watch paths registered.
+    let mut delivered: Vec<usize> = Vec::new();
+    for (idx, wp) in path_owner {
+        if path.starts_with(wp) {
+            matched_any = true;
+            if delivered.contains(idx) {
+                continue;
+            }
+            delivered.push(*idx);
+            let adapter = &adapters[*idx];
             if let Err(e) = adapter.on_file_changed(path.clone(), raw_tx.clone()).await {
                 tracing::warn!(adapter = adapter.name(), path = %path.display(),
                     error = %e, "adapter on_file_changed errored");
             }
-            return; // first prefix-match wins; adapters MUST not have overlapping roots
         }
     }
-    tracing::trace!(path = %path.display(), "no adapter claims this path; ignoring");
+    if !matched_any {
+        tracing::trace!(path = %path.display(), "no adapter claims this path; ignoring");
+    }
 }
 
 #[cfg(test)]
