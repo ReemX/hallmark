@@ -14,9 +14,34 @@ use tracing_subscriber::EnvFilter;
 
 /// Initialize structured logging. Call once at process start.
 /// Reads RUST_LOG env var; defaults to `hallmark_lib=info,warn` for clean output.
+///
+/// WR-07: If `try_init` fails (e.g. a global subscriber already installed),
+/// surface the error to stderr rather than silently dropping it. Production
+/// `init_tracing()` should be called exactly once; a second call indicates a bug.
+/// Tests that need to tolerate repeat calls should use `init_tracing_for_tests()`.
 pub fn init_tracing() {
     let filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new("hallmark_lib=info,warn"));
+    if let Err(e) = tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_target(true)
+        .with_level(true)
+        .try_init()
+    {
+        eprintln!("WARNING: tracing init failed: {e}");
+    }
+}
+
+/// Tests-only: initialize tracing if not already initialized, swallowing the
+/// "already installed" error explicitly. Multiple `#[tokio::test]`s in one
+/// process will both call this; only the first does anything useful.
+///
+/// Made `pub` so integration tests in `tests/` can call it. Marked
+/// `#[allow(dead_code)]` because not every test invokes it.
+#[allow(dead_code)]
+pub fn init_tracing_for_tests() {
+    let filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("hallmark_lib=warn"));
     let _ = tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_target(true)
