@@ -106,9 +106,8 @@ async fn main() -> anyhow::Result<()> {
     let (raw_tx, raw_rx) = mpsc::channel::<RawUnlockEvent>(64);
     let (sink_tx, mut sink_rx) = mpsc::channel::<RawUnlockEvent>(64);
 
-    let watcher_handle = tokio::spawn(run_watcher(adapters.clone(), raw_tx));
+    let watcher_handle = tokio::spawn(run_watcher(adapters, raw_tx));
     let pipeline_handle = tokio::spawn(run_pipeline(
-        adapters,
         raw_rx,
         store.clone(),
         session_id.clone(),

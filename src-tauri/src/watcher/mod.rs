@@ -343,8 +343,11 @@ use tokio::sync::Mutex as TokioMutex;
 /// kept events to the `sink` for the CLI test harness / Phase 2 popup queue.
 ///
 /// Returns when `raw_rx` is closed (graceful shutdown).
+///
+/// WR-02: This function does NOT take an `adapters: Vec<Arc<dyn SourceAdapter>>`
+/// parameter; only `run_watcher` needs the adapters. Callers that wired up both
+/// previously cloned the Vec twice — that clone is no longer required.
 pub async fn run_pipeline(
-    _adapters: Vec<Arc<dyn SourceAdapter>>, // not directly used here, kept for API symmetry
     mut raw_rx: mpsc::Receiver<RawUnlockEvent>,
     store: Arc<SqliteStore>,
     session_id: String,
@@ -420,7 +423,6 @@ mod pipeline_tests {
         let store_clone = store.clone();
 
         let handle = tokio::spawn(run_pipeline(
-            vec![],
             raw_rx,
             store_clone,
             session_id.clone(),
