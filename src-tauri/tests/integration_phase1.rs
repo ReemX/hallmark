@@ -189,8 +189,11 @@ async fn sc3_local_save_txt_redirect_drives_end_to_end_pipeline() {
     // appmanifest mapping installdir "FooGame" → appid 4242
     write_appmanifest(&lib, 4242, "FooGame");
 
-    // local_save.txt redirect target
-    let redirect_target = fresh_tmp("sc3-redirect");
+    // local_save.txt redirect target. BL-04: must be under the DLL's directory
+    // tree (or under a known Goldberg default root) to satisfy the path-traversal
+    // allow-list. Place it as a sibling subdir of the DLL dir.
+    let redirect_target = game_bin.join("sc3-redirect");
+    fs::create_dir_all(&redirect_target).unwrap();
     let target_str = redirect_target.to_string_lossy().replace('/', "\\");
     fs::write(game_bin.join("local_save.txt"), &target_str).unwrap();
 

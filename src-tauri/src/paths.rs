@@ -459,6 +459,46 @@ fn scan_local_save_redirects(libraries: &[PathBuf]) -> Vec<GoldbergRedirect> {
                 );
                 continue;
             }
+            // BL-04: Reject path-traversal redirects. local_save.txt content is
+            // attacker-controllable in tampered Goldberg distributions; we must not
+            // follow a redirect that escapes both the game install directory AND
+            // the known Goldberg roots. A malicious `..\..\Users\<u>\AppData\...`
+            // would otherwise install a recursive `notify` watch on unrelated
+            // directories and reflect their paths into our INFO logs.
+            let canon = match resolved.canonicalize() {
+                Ok(c) => c,
+                Err(e) => {
+                    tracing::warn!(
+                        dll_dir = %dir.display(),
+                        unresolved = %resolved.display(),
+                        error = %e,
+                        "local_save.txt target failed to canonicalize; skipping"
+                    );
+                    continue;
+                }
+            };
+            // Allow if the canonicalised target is inside the DLL's directory tree
+            // (the typical relative-redirect case) OR inside one of the known
+            // Goldberg default roots (legitimate absolute-path redirects).
+            let dll_canon = dir.canonicalize().ok();
+            let goldberg_roots = goldberg_default_roots();
+            let allowed = dll_canon
+                .as_ref()
+                .map(|d| canon.starts_with(d))
+                .unwrap_or(false)
+                || goldberg_roots.iter().any(|r| {
+                    r.canonicalize()
+                        .map(|rc| canon.starts_with(&rc))
+                        .unwrap_or(false)
+                });
+            if !allowed {
+                tracing::warn!(
+                    dll_dir = %dir.display(),
+                    target = %canon.display(),
+                    "local_save.txt redirect points outside game dir and known Goldberg roots; refusing (BL-04)"
+                );
+                continue;
+            }
 
             // Resolve appid from appmanifest matching the DLL's installdir.
             let installdir = match extract_installdir_from_dll_path(dir) {
@@ -683,7 +723,9 @@ mod tests_goldberg {
         // Note the case mismatch: appmanifest "FooGame" vs on-disk "foogame".
         write_appmanifest(&lib, 55555, "FooGame");
 
-        let target = fresh_tmp("case-save");
+        // BL-04: keep target inside the DLL dir tree.
+        let target = game_bin.join("case-save");
+        fs::create_dir_all(&target).unwrap();
         let target_str = target.to_string_lossy().replace('/', "\\");
         fs::write(game_bin.join("local_save.txt"), &target_str).unwrap();
 
@@ -697,7 +739,35 @@ mod tests_goldberg {
         assert_eq!(redirects[0].app_id, 55555);
 
         let _ = fs::remove_dir_all(&lib);
-        let _ = fs::remove_dir_all(&target);
+    }
+
+    /// BL-04 regression: a tampered local_save.txt pointing OUTSIDE the game
+    /// install directory and OUTSIDE the known Goldberg roots must be refused.
+    #[test]
+    fn local_save_rejects_path_traversal_outside_allowed_roots() {
+        let lib = fresh_tmp("lib-traversal");
+        let common = lib.join("steamapps").join("common");
+        let game_bin = common.join("EvilGame").join("bin");
+        fs::create_dir_all(&game_bin).unwrap();
+        fs::write(game_bin.join("steam_api64.dll"), b"placeholder").unwrap();
+        write_appmanifest(&lib, 99988, "EvilGame");
+
+        // Target is OUTSIDE the game install dir (a sibling tmp dir). It also is
+        // not under any Goldberg default root (which would canonicalize to
+        // %APPDATA%\Goldberg SteamEmu Saves\ etc). The fix must reject it.
+        let evil_target = fresh_tmp("evil-target");
+        let evil_str = evil_target.to_string_lossy().replace('/', "\\");
+        fs::write(game_bin.join("local_save.txt"), &evil_str).unwrap();
+
+        let redirects = scan_local_save_redirects(&[lib.clone()]);
+        assert!(
+            redirects.is_empty(),
+            "redirect that escapes game dir + Goldberg roots must be refused (BL-04); got {:?}",
+            redirects
+        );
+
+        let _ = fs::remove_dir_all(&lib);
+        let _ = fs::remove_dir_all(&evil_target);
     }
 
     #[test]
@@ -710,7 +780,10 @@ mod tests_goldberg {
         fs::write(game_bin.join("steam_api64.dll"), b"placeholder").unwrap();
         write_appmanifest(&lib, 12345, "FooGame");
 
-        let target = fresh_tmp("absolute_save");
+        // BL-04: target must be under the DLL's directory tree to satisfy the
+        // path-traversal allow-list. We use a sibling subdir of the DLL dir.
+        let target = game_bin.join("absolute_save");
+        fs::create_dir_all(&target).unwrap();
         let target_str = target.to_string_lossy().replace('/', "\\");
         fs::write(game_bin.join("local_save.txt"), &target_str).unwrap();
 
@@ -721,11 +794,14 @@ mod tests_goldberg {
             "expected exactly one redirect; got {:?}",
             redirects
         );
-        assert_eq!(redirects[0].target_path, target);
+        // Compare canonical paths; canonicalize() may add `\\?\` prefix on Windows.
+        assert_eq!(
+            redirects[0].target_path.canonicalize().unwrap(),
+            target.canonicalize().unwrap()
+        );
         assert_eq!(redirects[0].app_id, 12345);
 
         let _ = fs::remove_dir_all(&lib);
-        let _ = fs::remove_dir_all(&target);
     }
 
     #[test]
@@ -793,7 +869,9 @@ mod tests_goldberg {
         fs::create_dir_all(&game_bin).unwrap();
         fs::write(game_bin.join("steam_api64.dll"), b"placeholder").unwrap();
         write_appmanifest(&lib, 22222, "WidgetGame");
-        let target = fresh_tmp("trim_save");
+        // BL-04: keep target inside the DLL dir tree to satisfy the allow-list.
+        let target = game_bin.join("trim_save");
+        fs::create_dir_all(&target).unwrap();
         let target_str = target.to_string_lossy().replace('/', "\\");
         // Write with CRLF + trailing space
         fs::write(
@@ -804,11 +882,13 @@ mod tests_goldberg {
 
         let redirects = scan_local_save_redirects(&[lib.clone()]);
         assert_eq!(redirects.len(), 1);
-        assert_eq!(redirects[0].target_path, target);
+        assert_eq!(
+            redirects[0].target_path.canonicalize().unwrap(),
+            target.canonicalize().unwrap()
+        );
         assert_eq!(redirects[0].app_id, 22222);
 
         let _ = fs::remove_dir_all(&lib);
-        let _ = fs::remove_dir_all(&target);
     }
 
     #[test]
@@ -820,7 +900,10 @@ mod tests_goldberg {
         fs::write(game_bin.join("steam_api64.dll"), b"placeholder").unwrap();
         // appmanifest exists but with a DIFFERENT installdir
         write_appmanifest(&lib, 33333, "SomeOtherGame");
-        let target = fresh_tmp("orphan_save");
+        // BL-04: keep target inside the DLL dir so the allow-list check passes;
+        // the appmanifest mismatch is what should cause the skip.
+        let target = game_bin.join("orphan_save");
+        fs::create_dir_all(&target).unwrap();
         let target_str = target.to_string_lossy().replace('/', "\\");
         fs::write(game_bin.join("local_save.txt"), &target_str).unwrap();
 
@@ -832,7 +915,6 @@ mod tests_goldberg {
         );
 
         let _ = fs::remove_dir_all(&lib);
-        let _ = fs::remove_dir_all(&target);
     }
 
     #[test]
