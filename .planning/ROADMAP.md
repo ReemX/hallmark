@@ -13,7 +13,7 @@ Hallmark ships in four coarse phases. Phase 1 lays the load-bearing detection pi
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: Detection Pipeline Foundation** - Watcher core, Goldberg adapter, first-launch seeding, path discovery, SQLite store
-- [ ] **Phase 2: Premium UI — Popup, Companion & Game Session** - Popup overlay with signature sound, companion window, game-session detection, schema/icon resolution
+- [x] **Phase 2: Premium UI — Popup, Companion & Game Session** - Popup overlay with signature sound, companion window, game-session detection, schema/icon resolution (completed 2026-05-08)
 - [ ] **Phase 3: Remaining Source Adapters** - Steam-legit binary VDF adapter, CreamAPI adapter, SmartSteamEmu adapter, cross-source dedup
 - [ ] **Phase 4: Polish & Distribution** - Test popup trigger, start-with-Windows, NSIS installer, auto-updater, GitHub Actions release pipeline, first-run wizard
 
@@ -54,7 +54,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [x] 02-04-PLAN.md — Audio dispatcher (POPUP-06): rodio 0.22 AudioDispatcher + Tier enum + 3 bundled SFX assets (placeholder synthesis script for Phase 4 polish)
   - [x] 02-05-PLAN.md — Popup overlay hero feature (POPUP-01..08): ui.rs window builders + WS_EX_NOACTIVATE HWND patch + popup_queue.rs (adaptive compression + 100% appended-last) + React PopupCard + PS5 Pure CSS
   - [x] 02-06-PLAN.md — Companion window (COMP-01..03): 3 Tauri commands (get_companion_state + prefs CRUD) + AppState + 7 React components (header/list/filter/sort/skeleton/empty) + companion CSS
-  - [ ] 02-07-PLAN.md — Final integration: lib.rs setup() wires all 4 tokio tasks + windows + AppState + invoke_handler + game-started listener spawning schema::resolve; 5 integration tests
+  - [x] 02-07-PLAN.md — Final integration: lib.rs setup() wires all 4 tokio tasks + windows + AppState + invoke_handler + game-started listener spawning schema::resolve; 5 integration tests
 **UI hint**: yes
 
 ### Phase 3: Remaining Source Adapters
@@ -88,6 +88,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Detection Pipeline Foundation | 2/5 | In Progress|  |
-| 2. Premium UI — Popup, Companion & Game Session | 5/7 | In Progress|  |
+| 2. Premium UI — Popup, Companion & Game Session | 7/7 | Complete   | 2026-05-08 |
 | 3. Remaining Source Adapters | 0/TBD | Not started | - |
 | 4. Polish & Distribution | 0/TBD | Not started | - |
