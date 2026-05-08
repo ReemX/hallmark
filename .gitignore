@@ -24,3 +24,4 @@ src/**/*.d.ts
 # Compiled WAV generator script output
 /gen_sfx.exe
 /gen_sfx
+/gen_sfx.pdb
