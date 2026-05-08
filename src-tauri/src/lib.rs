@@ -50,9 +50,13 @@ pub fn init_tracing_for_tests() {
 }
 
 /// Production entry — invoked by `bin/main.rs`. Starts the Tauri shell.
-/// Phase 1: Tauri starts but creates NO windows (windows array empty in tauri.conf.json).
-/// The process stays alive via Tauri's run loop; Plans 04/05 spawn background tasks
-/// inside the `setup()` closure.
+///
+/// Phase 1: Tauri starts but creates NO windows. This is configured in
+/// `tauri.conf.json` via `app.windows = []` and `app.security.csp = null`,
+/// both of which are **intentional for Phase 1's headless backend** (IN-06).
+/// Phase 2 will add the popup overlay window and a CSP appropriate to it.
+/// The process stays alive via Tauri's run loop; Plans 04/05 spawn background
+/// tasks inside the `setup()` closure.
 pub fn run() {
     init_tracing();
     tracing::info!(
