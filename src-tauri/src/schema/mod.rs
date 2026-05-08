@@ -15,7 +15,7 @@ use crate::store::SqliteStore;
 
 /// Public achievement schema as consumed by Plan 05 (popup) and Plan 06 (companion).
 /// Mirrors `src/types.ts::AchievementSchema` field-for-field via serde.
-#[derive(Debug, Clone, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, serde::Deserialize, PartialEq)]
 pub struct AchievementSchema {
     pub app_id: u64,
     pub ach_api_name: String,

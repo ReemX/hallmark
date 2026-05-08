@@ -110,7 +110,7 @@ pub fn is_completion_fired(conn: &Connection, app_id: u64) -> anyhow::Result<boo
 }
 
 /// Companion window per-game preferences. Mirrors the companion_prefs row.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CompanionPrefs {
     pub app_id: u64,
     pub filter: Option<String>,       // 'all' | 'earned' | 'locked'
