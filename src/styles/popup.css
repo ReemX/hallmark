@@ -1,3 +1,76 @@
-/* src/styles/popup.css — Plan 05 expands. */
-html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
-#root { width: 100vw; height: 100vh; }
+/* Phase 2 popup overlay — PS5 Pure dark glass. UI-SPEC.md Color + Typography + Spacing. */
+
+html, body {
+  margin: 0; padding: 0; background: transparent; overflow: hidden;
+  font-family: "Inter", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  color: #FFFFFF;
+}
+#root { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: flex-end; }
+
+/* ===== Pill silhouette (D-02 wide horizontal pill, 440x96 logical) ===== */
+.popup-pill {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; height: 100%; box-sizing: border-box;
+  padding: 16px 24px 16px 16px;
+  border-radius: 48px; /* full-pill stadium per UI-SPEC */
+  background: rgba(12, 12, 16, 0.82);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(120, 220, 255, 0.85);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: #FFFFFF;
+  /* Top inner highlight per UI-SPEC popup secondary 30% */
+}
+
+/* ===== Icon disc (56px circular per UI-SPEC Icon Treatment) ===== */
+.popup-icon { flex: 0 0 56px; width: 56px; height: 56px; }
+.popup-icon img,
+.popup-icon-placeholder {
+  width: 56px; height: 56px; border-radius: 50%; object-fit: cover; display: block;
+}
+.popup-icon-placeholder { background: rgba(255, 255, 255, 0.15); }
+
+/* ===== Text column ===== */
+.popup-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.popup-title {
+  font-size: 14px; font-weight: 600; line-height: 1.2;
+  color: #FFFFFF;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.popup-desc {
+  font-size: 12px; font-weight: 400; line-height: 1.4;
+  color: rgba(255, 255, 255, 0.60);
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.popup-rarity {
+  font-size: 12px; font-weight: 400; line-height: 1.4;
+  color: rgba(120, 220, 255, 0.85); /* accent for rarity tag */
+  margin-top: 2px;
+}
+
+/* ===== Tier modifiers ===== */
+.tier-rare {
+  background: rgba(12, 12, 16, 0.88);
+  border-color: rgba(180, 255, 255, 1.0);
+}
+.tier-rare .popup-icon img,
+.tier-rare .popup-icon-placeholder {
+  box-shadow: 0 0 12px 3px rgba(120, 220, 255, 0.55);
+}
+
+/* ===== 100% celebration (D-12) ===== */
+.tier-completion {
+  background: rgba(20, 14, 30, 0.90);
+  border-color: rgba(220, 180, 255, 0.90);
+  animation: completion-pulse 220ms ease-out 1;
+}
+.tier-completion .popup-icon img,
+.tier-completion .popup-icon-placeholder {
+  box-shadow: 0 0 16px 4px rgba(220, 180, 255, 0.65);
+}
+@keyframes completion-pulse {
+  0%   { transform: scale(1.0); }
+  50%  { transform: scale(1.04); }
+  100% { transform: scale(1.0); }
+}
