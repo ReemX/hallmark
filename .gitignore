@@ -21,3 +21,6 @@ src/**/*.d.ts
 /hallmark.db
 /hallmark.db-shm
 /hallmark.db-wal
+# Compiled WAV generator script output
+/gen_sfx.exe
+/gen_sfx
