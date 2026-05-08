@@ -17,10 +17,16 @@ pub fn create_session(
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)?
         .as_secs() as i64;
+    // IN-03: surface u64 → i64 overflow as an error rather than silent wrap.
+    // Steam app IDs are 32-bit unsigned today, so this is a forward-compat guard.
+    let app_id_i64 = match app_id {
+        Some(a) => Some(i64::try_from(a)?),
+        None => None,
+    };
     conn.execute(
         "INSERT INTO sessions (session_id, app_id, started_at, ended_at)
          VALUES (?1, ?2, ?3, NULL)",
-        params![session_id, app_id.map(|a| a as i64), now],
+        params![session_id, app_id_i64, now],
     )?;
     Ok(())
 }
@@ -46,10 +52,12 @@ pub fn mark_notified(
     ach_api_name: &str,
     session_id: &str,
 ) -> anyhow::Result<()> {
+    // IN-03: surface u64 → i64 overflow as an error rather than silent wrap.
+    let app_id_i64 = i64::try_from(app_id)?;
     conn.execute(
         "UPDATE unlock_history SET notified = 1
          WHERE app_id = ?1 AND ach_api_name = ?2 AND session_id = ?3",
-        params![app_id as i64, ach_api_name, session_id],
+        params![app_id_i64, ach_api_name, session_id],
     )?;
     Ok(())
 }

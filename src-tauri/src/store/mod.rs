@@ -59,6 +59,10 @@ impl SqliteStore {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)?
             .as_secs() as i64;
+        // IN-03: Steam app IDs are 32-bit unsigned in practice, so the cast to i64
+        // is always lossless today. Use try_from to surface a non-Steam source
+        // emitting an out-of-range u64 as an error rather than silent wrap.
+        let app_id_i64 = i64::try_from(app_id)?;
         // WR-05: recover from poisoning rather than propagating a panic. A panicked
         // closure (e.g. a query helper hitting unexpected data) would otherwise
         // poison the mutex for the rest of the daemon process, taking down every
@@ -68,7 +72,7 @@ impl SqliteStore {
             "INSERT OR IGNORE INTO unlock_history
                 (app_id, ach_api_name, source, unlocked_at, session_id, notified)
              VALUES (?1, ?2, ?3, ?4, ?5, 0)",
-            params![app_id as i64, ach_api_name, source, now, session_id],
+            params![app_id_i64, ach_api_name, source, now, session_id],
         )?;
         Ok(rows_changed == 1)
     }
@@ -89,11 +93,13 @@ impl SqliteStore {
     /// and synchronous (no `await` inside — the lock is `std::sync::Mutex`, not
     /// `tokio::sync::Mutex`).
     ///
-    /// WR-05: If the closure panics, the underlying Mutex becomes poisoned. We
-    /// recover via `unwrap_or_else(|p| p.into_inner())`; the workspace
-    /// `Cargo.toml` also sets `panic = "abort"` for release builds, which sidesteps
-    /// the poisoning case entirely. In debug builds and tests, callers should
-    /// still ensure their closures cannot panic.
+    /// WR-05 / IN-04: If the closure panics, the underlying Mutex becomes
+    /// poisoned. We recover via `unwrap_or_else(|p| p.into_inner())`; the
+    /// workspace `Cargo.toml` also sets `panic = "abort"` for release builds,
+    /// which sidesteps the poisoning case entirely. In debug builds and tests,
+    /// callers should still ensure their closures cannot panic — wrap risky
+    /// code in `std::panic::catch_unwind` if a panic is conceivable, so the
+    /// rest of the daemon can continue running after the lock is released.
     pub fn with_conn<F, T>(&self, f: F) -> anyhow::Result<T>
     where
         F: FnOnce(&Connection) -> anyhow::Result<T>,
