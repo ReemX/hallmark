@@ -29,9 +29,9 @@
 
 ### Companion
 
-- [ ] **COMP-01**: Companion window auto-shows when a game launches and auto-hides when the game closes
-- [ ] **COMP-02**: Companion displays the current game's achievement list — earned and locked entries with icon, title, description
-- [ ] **COMP-03**: Session unlock history persists to local SQLite, so a mid-game restart of Hallmark preserves the "earned this session" list
+- [x] **COMP-01**: Companion window auto-shows when a game launches and auto-hides when the game closes
+- [x] **COMP-02**: Companion displays the current game's achievement list — earned and locked entries with icon, title, description
+- [x] **COMP-03**: Session unlock history persists to local SQLite, so a mid-game restart of Hallmark preserves the "earned this session" list
 
 ### Game Session & Schema
 
@@ -109,9 +109,9 @@
 | POPUP-06 | Phase 2 | Complete |
 | POPUP-07 | Phase 2 | Complete |
 | POPUP-08 | Phase 2 | Complete |
-| COMP-01 | Phase 2 | Pending |
-| COMP-02 | Phase 2 | Pending |
-| COMP-03 | Phase 2 | Pending |
+| COMP-01 | Phase 2 | Complete |
+| COMP-02 | Phase 2 | Complete |
+| COMP-03 | Phase 2 | Complete |
 | GAME-01 | Phase 2 | Complete |
 | GAME-02 | Phase 2 | Complete |
 | GAME-03 | Phase 2 | Complete |

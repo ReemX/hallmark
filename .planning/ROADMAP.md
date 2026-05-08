@@ -53,7 +53,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [x] 02-03-PLAN.md — Game detection (D-21 hybrid) + Win32 monitor placement (POPUP-03): game_detect/{mod,process_scan,steam_state}.rs + monitor.rs HWND/MonitorFromWindow + paths.rs visibility tweak
   - [x] 02-04-PLAN.md — Audio dispatcher (POPUP-06): rodio 0.22 AudioDispatcher + Tier enum + 3 bundled SFX assets (placeholder synthesis script for Phase 4 polish)
   - [x] 02-05-PLAN.md — Popup overlay hero feature (POPUP-01..08): ui.rs window builders + WS_EX_NOACTIVATE HWND patch + popup_queue.rs (adaptive compression + 100% appended-last) + React PopupCard + PS5 Pure CSS
-  - [ ] 02-06-PLAN.md — Companion window (COMP-01..03): 3 Tauri commands (get_companion_state + prefs CRUD) + AppState + 7 React components (header/list/filter/sort/skeleton/empty) + companion CSS
+  - [x] 02-06-PLAN.md — Companion window (COMP-01..03): 3 Tauri commands (get_companion_state + prefs CRUD) + AppState + 7 React components (header/list/filter/sort/skeleton/empty) + companion CSS
   - [ ] 02-07-PLAN.md — Final integration: lib.rs setup() wires all 4 tokio tasks + windows + AppState + invoke_handler + game-started listener spawning schema::resolve; 5 integration tests
 **UI hint**: yes
 
