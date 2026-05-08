@@ -15,6 +15,10 @@ use std::sync::Mutex;
 /// can add `002_*.sql` and a numbered loader if multiple migrations stack up.
 const INITIAL_MIGRATION_SQL: &str = include_str!("migrations/001_initial.sql");
 
+/// Phase 2 migration — schema_cache + companion_prefs tables. Idempotent;
+/// applied after the initial migration in every open()/open_in_memory() call.
+const PHASE2_MIGRATION_SQL: &str = include_str!("migrations/002_schema_cache.sql");
+
 /// SQLite-backed persistence handle. Cheap to clone via `Arc` from the caller.
 pub struct SqliteStore {
     pub(super) conn: Mutex<Connection>,
@@ -26,6 +30,7 @@ impl SqliteStore {
     pub fn open(db_path: &Path) -> anyhow::Result<Self> {
         let conn = Connection::open(db_path)?;
         conn.execute_batch(INITIAL_MIGRATION_SQL)?;
+        conn.execute_batch(PHASE2_MIGRATION_SQL)?;  // Phase 2: schema_cache + companion_prefs
         Ok(Self {
             conn: Mutex::new(conn),
         })
@@ -35,6 +40,7 @@ impl SqliteStore {
     pub fn open_in_memory() -> anyhow::Result<Self> {
         let conn = Connection::open_in_memory()?;
         conn.execute_batch(INITIAL_MIGRATION_SQL)?;
+        conn.execute_batch(PHASE2_MIGRATION_SQL)?;  // Phase 2: schema_cache + companion_prefs
         Ok(Self {
             conn: Mutex::new(conn),
         })
@@ -181,5 +187,42 @@ mod tests {
             "NULL session_id must be rejected by NOT NULL constraint; got {:?}",
             result
         );
+    }
+
+    #[test]
+    fn open_creates_phase2_tables() {
+        let s = SqliteStore::open_in_memory().unwrap();
+        let conn = s.conn.lock().unwrap();
+        // schema_cache exists
+        let n: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_cache'",
+            [], |r| r.get(0)
+        ).unwrap();
+        assert_eq!(n, 1, "schema_cache table should exist after open()");
+        // companion_prefs exists
+        let n: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='companion_prefs'",
+            [], |r| r.get(0)
+        ).unwrap();
+        assert_eq!(n, 1, "companion_prefs table should exist after open()");
+        // idx_schema_app index exists
+        let n: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_schema_app'",
+            [], |r| r.get(0)
+        ).unwrap();
+        assert_eq!(n, 1, "idx_schema_app index should exist after open()");
+    }
+
+    #[test]
+    fn phase2_migration_is_idempotent() {
+        let s = SqliteStore::open_in_memory().unwrap();
+        // Re-running migration on the same connection must not error
+        {
+            let conn = s.conn.lock().unwrap();
+            conn.execute_batch(PHASE2_MIGRATION_SQL).unwrap();
+            conn.execute_batch(PHASE2_MIGRATION_SQL).unwrap();
+        }
+        // And Phase 1 record_unlock still works after the second migration application
+        assert!(s.record_unlock(480, "ACH_X", "goldberg", "session-1").unwrap());
     }
 }
