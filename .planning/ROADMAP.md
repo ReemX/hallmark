@@ -52,7 +52,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [x] 02-02-PLAN.md — Schema resolution (D-24 lookup chain): cache.rs query helpers + steam_api.rs (no-key Web API) + appcache.rs + goldberg_meta.rs + SchemaCache orchestrator + classify_tier
   - [x] 02-03-PLAN.md — Game detection (D-21 hybrid) + Win32 monitor placement (POPUP-03): game_detect/{mod,process_scan,steam_state}.rs + monitor.rs HWND/MonitorFromWindow + paths.rs visibility tweak
   - [x] 02-04-PLAN.md — Audio dispatcher (POPUP-06): rodio 0.22 AudioDispatcher + Tier enum + 3 bundled SFX assets (placeholder synthesis script for Phase 4 polish)
-  - [ ] 02-05-PLAN.md — Popup overlay hero feature (POPUP-01..08): ui.rs window builders + WS_EX_NOACTIVATE HWND patch + popup_queue.rs (adaptive compression + 100% appended-last) + React PopupCard + PS5 Pure CSS
+  - [x] 02-05-PLAN.md — Popup overlay hero feature (POPUP-01..08): ui.rs window builders + WS_EX_NOACTIVATE HWND patch + popup_queue.rs (adaptive compression + 100% appended-last) + React PopupCard + PS5 Pure CSS
   - [ ] 02-06-PLAN.md — Companion window (COMP-01..03): 3 Tauri commands (get_companion_state + prefs CRUD) + AppState + 7 React components (header/list/filter/sort/skeleton/empty) + companion CSS
   - [ ] 02-07-PLAN.md — Final integration: lib.rs setup() wires all 4 tokio tasks + windows + AppState + invoke_handler + game-started listener spawning schema::resolve; 5 integration tests
 **UI hint**: yes
@@ -88,6 +88,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Detection Pipeline Foundation | 2/5 | In Progress|  |
-| 2. Premium UI — Popup, Companion & Game Session | 4/7 | In Progress|  |
+| 2. Premium UI — Popup, Companion & Game Session | 5/7 | In Progress|  |
 | 3. Remaining Source Adapters | 0/TBD | Not started | - |
 | 4. Polish & Distribution | 0/TBD | Not started | - |

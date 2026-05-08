@@ -18,14 +18,14 @@
 
 ### Popup
 
-- [ ] **POPUP-01**: Premium signature-style popup renders achievement icon, title, description, in/out animation, and signature sound effect on every unlock
-- [ ] **POPUP-02**: Popup queue handles close-succession unlocks without dropping entries; queued popups display sequentially with consistent timing
+- [x] **POPUP-01**: Premium signature-style popup renders achievement icon, title, description, in/out animation, and signature sound effect on every unlock
+- [x] **POPUP-02**: Popup queue handles close-succession unlocks without dropping entries; queued popups display sequentially with consistent timing
 - [x] **POPUP-03**: Popup appears on the monitor where the running game is displayed (multi-monitor aware via game window HWND lookup)
 - [x] **POPUP-04**: Popup is DPI-aware and renders correctly on 4K and scaled displays
-- [ ] **POPUP-05**: 100% completion celebration popup fires when a game's achievement set hits 100%; placed last in the queue if other unlocks are pending
+- [x] **POPUP-05**: 100% completion celebration popup fires when a game's achievement set hits 100%; placed last in the queue if other unlocks are pending
 - [x] **POPUP-06**: Tier-based popup styling — rare unlocks receive richer animation/sound treatment; degrades gracefully to standard popup when rarity data is unavailable
 - [x] **POPUP-07**: Rarity percentage rendered in popup when sourced from Steam `appcache` global stats; rendered without rarity when data is unavailable
-- [ ] **POPUP-08**: Popup uses external borderless always-on-top window (`WS_EX_TOPMOST`) with `WS_EX_NOACTIVATE` applied via `SetWindowLongW` post-creation to prevent focus-stealing from the running game
+- [x] **POPUP-08**: Popup uses external borderless always-on-top window (`WS_EX_TOPMOST`) with `WS_EX_NOACTIVATE` applied via `SetWindowLongW` post-creation to prevent focus-stealing from the running game
 
 ### Companion
 
@@ -101,14 +101,14 @@
 | DETECT-06 | Phase 1 | Complete |
 | DETECT-07 | Phase 1 | Complete |
 | DETECT-08 | Phase 1 | Complete |
-| POPUP-01 | Phase 2 | Pending |
-| POPUP-02 | Phase 2 | Pending |
+| POPUP-01 | Phase 2 | Complete |
+| POPUP-02 | Phase 2 | Complete |
 | POPUP-03 | Phase 2 | Complete |
 | POPUP-04 | Phase 2 | Complete |
-| POPUP-05 | Phase 2 | Pending |
+| POPUP-05 | Phase 2 | Complete |
 | POPUP-06 | Phase 2 | Complete |
 | POPUP-07 | Phase 2 | Complete |
-| POPUP-08 | Phase 2 | Pending |
+| POPUP-08 | Phase 2 | Complete |
 | COMP-01 | Phase 2 | Pending |
 | COMP-02 | Phase 2 | Pending |
 | COMP-03 | Phase 2 | Pending |

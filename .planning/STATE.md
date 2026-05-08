@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 02-04-PLAN.md
-last_updated: "2026-05-08T11:17:07.754Z"
+last_updated: "2026-05-08T11:24:28.150Z"
 last_activity: 2026-05-08
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 12
-  completed_plans: 10
-  percent: 83
+  completed_plans: 11
+  percent: 92
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 ## Current Position
 
 Phase: 02 (Premium UI — Popup, Companion & Game Session) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-05-08
 
-Progress: [████████░░] 83%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Progress: [████████░░] 83%
 | Phase 02-premium-ui-popup-companion-game-session P02 | 25 | 3 tasks | 6 files |
 | Phase 02 P03 | 15 | 3 tasks | 5 files |
 | Phase 02-premium-ui-popup-companion-game-session P04 | 15 | 2 tasks | 7 files |
+| Phase 02-premium-ui-popup-companion-game-session P05 | 25 | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,9 @@ Recent decisions affecting current work:
 - [Phase ?]: rodio::mixer::Mixer not re-exported from rodio root — must import via use rodio::mixer::Mixer
 - [Phase ?]: rodio 0.22 Mixer::add() accepts Source directly with auto sample-rate/channel conversion
 - [Phase ?]: Plan 02-04: placeholder WAV synthesis for Phase 2 unblocking; Phase 4 W-9 replaces with signature mix
+- [Phase ?]: Every received event flows through process_event without exception
+- [Phase ?]: 100% celebration always appended-last (D-12) — idle 50ms timeout fires only when channel is quiet
+- [Phase ?]: 5s hold chosen at Claude discretion; CONTEXT.md defers specifics to design iteration
 
 ### Pending Todos
 
@@ -121,6 +125,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-08T11:17:07.745Z
+Last session: 2026-05-08T11:24:28.142Z
 Stopped at: Completed 02-04-PLAN.md
 Resume file: None
