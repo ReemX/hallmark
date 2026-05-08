@@ -55,7 +55,7 @@ Hallmark is a Windows app that brings PSN/Xbox-grade achievement satisfaction to
 # Scaffold project (React + TypeScript + Vite)
 # Core Rust dependencies (Cargo.toml)
 # notify = "8.2"
-# notify-debouncer-full = "0.5"
+# notify-debouncer-full = "0.7"  # Updated from 0.5: published stable, same notify 8.2 backend, audited 2026-05-08 (IN-05)
 # rodio = { version = "0.22", features = ["vorbis", "wav"] }
 # sysinfo = "0.39"
 # windows = { version = "0.58", features = ["Win32_UI_WindowsAndMessaging"] }
