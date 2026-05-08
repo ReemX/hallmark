@@ -332,7 +332,12 @@ async fn read_with_retry(path: &Path) -> anyhow::Result<String> {
             Ok(s) => return Ok(s),
             Err(e)
                 if e.kind() == std::io::ErrorKind::PermissionDenied
-                    || e.raw_os_error() == Some(32) /* ERROR_SHARING_VIOLATION */ =>
+                    || matches!(
+                        e.raw_os_error(),
+                        // 32 = ERROR_SHARING_VIOLATION, 33 = ERROR_LOCK_VIOLATION (IN-01).
+                        // Both can fire during Goldberg's open-write-close cycle on Windows.
+                        Some(32) | Some(33)
+                    ) =>
             {
                 last_err = Some(e);
                 tokio::time::sleep(Duration::from_millis(50)).await;
