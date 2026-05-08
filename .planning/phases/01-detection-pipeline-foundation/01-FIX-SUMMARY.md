@@ -66,8 +66,43 @@ fd03f23 fix(01): BL-03/WR-08/WR-09 cache watch paths; route to all matching adap
 93c16ab fix(01): BL-01 case-insensitive installdir lookup
 ```
 
+## Info Findings (IN-01..IN-06)
+
+Applied in iteration 2 (`/gsd-code-review --fix` with `fix_scope=info_only`). All
+6 still applied (none obsolete after the Blocker/Warning round). Tests still
+pass: 47 unit + 5 integration = 52/52, `cargo build --bins --tests` clean.
+
+| ID | Status | Note |
+|----|--------|------|
+| IN-01 | fixed | `read_with_retry` now retries on `Some(32) | Some(33)` (added `ERROR_LOCK_VIOLATION`). |
+| IN-02 | fixed | Extracted `STEAMAPI_MAX_SEARCH_DEPTH: usize = 8` constant in `paths.rs` (chose constant over depth bump per "simpler/least disruptive"). |
+| IN-03 | fixed | Replaced `app_id as i64` with `i64::try_from(app_id)?` in `store/mod.rs::record_unlock`, `store/queries.rs::create_session`, and `store/queries.rs::mark_notified`. |
+| IN-04 | fixed (doc) | Strengthened `with_conn` doc to recommend `std::panic::catch_unwind` for closures that could panic. **Bundled into the IN-03 commit** because both touched `store/mod.rs` and IN-04 was already partially covered by the WR-05 doc note; splitting would have produced a near-empty commit. |
+| IN-05 | fixed | Updated project `CLAUDE.md` to reflect `notify-debouncer-full = "0.7"` with rationale (chose updating docs over downgrading the crate, per "least disruptive" — the version was already audited in WR-06). |
+| IN-06 | fixed (doc) | Strengthened `lib.rs::run` doc to explicitly explain that `app.windows = []` and `app.security.csp = null` in `tauri.conf.json` are intentional Phase 1 settings (chose lib.rs route over a `_comment` JSON field to avoid risking Tauri schema-validation breakage).
+
+### Skipped / obsolete
+
+None. All 6 Info findings still applied to current code; none had been silently resolved by upstream Blocker/Warning fixes.
+
+### Logic-bug review notes (Tier 2 verification limits)
+
+- **IN-03 try_from**: replaces an infallible cast with a fallible one. `record_unlock` and `mark_notified` now propagate an `anyhow::Error` for u64 values > i64::MAX. Steam app IDs are 32-bit, so this never fires today; the change is forward-compat insurance.
+- **IN-05 doc-only**: changed `CLAUDE.md` to match the in-tree `Cargo.toml`. If the team later decides 0.5 is the correct pin (e.g. for upstream-stack alignment), the project Cargo.toml needs the downgrade — not just the docs.
+
+### Info-fix commit log
+
+```
+40b9b7e fix(01): IN-06 document Phase 1 headless tauri.conf.json intent in lib.rs
+fcb25c5 fix(01): IN-05 update CLAUDE.md notify-debouncer-full version to 0.7
+126d6d8 fix(01): IN-03 use i64::try_from for app_id casts            # also IN-04 doc edit (same file)
+c069498 fix(01): IN-02 extract STEAMAPI_MAX_SEARCH_DEPTH constant
+efbd1a6 fix(01): IN-01 retry on ERROR_LOCK_VIOLATION (33) alongside SHARING_VIOLATION (32)
+```
+
 ---
 
 _Fixed: 2026-05-08_
 _Fixer: Claude (gsd-code-fixer)_
 _Iteration: 1_
+_Iteration 2 (Info findings): 2026-05-08 — see "Info Findings" section above_
