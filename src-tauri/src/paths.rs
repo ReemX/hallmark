@@ -21,6 +21,13 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+/// Maximum directory depth walked under each `steamapps\common\<game>\` when
+/// searching for `steam_api*.dll`. Most installs land at depth 2-4
+/// (`game/bin/steam_api64.dll`); modded distributions occasionally nest deeper
+/// (`engine/redists/binaries/win64/x86_64/...`). Bounded so a pathological
+/// directory tree cannot stall startup. (IN-02)
+const STEAMAPI_MAX_SEARCH_DEPTH: usize = 8;
+
 /// One Goldberg `local_save.txt` redirect with its resolved appid.
 /// The appid is resolved by walking the `steam_api*.dll`'s game directory back
 /// to the matching `<library>\steamapps\appmanifest_<appid>.acf` and reading
@@ -411,8 +418,9 @@ fn scan_local_save_redirects(libraries: &[PathBuf]) -> Vec<GoldbergRedirect> {
         }
         let manifest_map = appmanifest_lookup(lib);
 
-        // max_depth(8) is generous — most installs are at depth 2-4 (game/bin/steam_api64.dll).
-        for entry in walkdir::WalkDir::new(&common).max_depth(8) {
+        // STEAMAPI_MAX_SEARCH_DEPTH is generous — most installs are at depth 2-4
+        // (game/bin/steam_api64.dll). See constant for rationale (IN-02).
+        for entry in walkdir::WalkDir::new(&common).max_depth(STEAMAPI_MAX_SEARCH_DEPTH) {
             let Ok(entry) = entry else {
                 continue;
             };
