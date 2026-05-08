@@ -48,7 +48,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. On a 4K / high-DPI display the popup renders at the correct physical size with no pixelation or truncation; rarity percentage is shown when sourced from Steam `appcache` global stats and gracefully absent when unavailable; rare achievements display the richer animation/sound treatment.
   5. Schema (display name, description, icon) for the running game is resolved and cached in SQLite before the first popup fires, so popups appear without a loading delay after the first session with that game.
 **Plans**: 7 plans
-  - [ ] 02-01-PLAN.md — Foundation: Cargo deps + frontend scaffold (Vite + React 19 + Framer Motion) + SQLite migration 002 + Tauri config (CSP + capabilities) + lib.rs Phase 2 module stubs
+  - [x] 02-01-PLAN.md — Foundation: Cargo deps + frontend scaffold (Vite + React 19 + Framer Motion) + SQLite migration 002 + Tauri config (CSP + capabilities) + lib.rs Phase 2 module stubs
   - [ ] 02-02-PLAN.md — Schema resolution (D-24 lookup chain): cache.rs query helpers + steam_api.rs (no-key Web API) + appcache.rs + goldberg_meta.rs + SchemaCache orchestrator + classify_tier
   - [ ] 02-03-PLAN.md — Game detection (D-21 hybrid) + Win32 monitor placement (POPUP-03): game_detect/{mod,process_scan,steam_state}.rs + monitor.rs HWND/MonitorFromWindow + paths.rs visibility tweak
   - [ ] 02-04-PLAN.md — Audio dispatcher (POPUP-06): rodio 0.22 AudioDispatcher + Tier enum + 3 bundled SFX assets (placeholder synthesis script for Phase 4 polish)
@@ -88,6 +88,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Detection Pipeline Foundation | 2/5 | In Progress|  |
-| 2. Premium UI — Popup, Companion & Game Session | 0/7 | Not started | - |
+| 2. Premium UI — Popup, Companion & Game Session | 1/7 | In Progress|  |
 | 3. Remaining Source Adapters | 0/TBD | Not started | - |
 | 4. Polish & Distribution | 0/TBD | Not started | - |

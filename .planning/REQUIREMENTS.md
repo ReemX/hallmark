@@ -21,7 +21,7 @@
 - [ ] **POPUP-01**: Premium signature-style popup renders achievement icon, title, description, in/out animation, and signature sound effect on every unlock
 - [ ] **POPUP-02**: Popup queue handles close-succession unlocks without dropping entries; queued popups display sequentially with consistent timing
 - [ ] **POPUP-03**: Popup appears on the monitor where the running game is displayed (multi-monitor aware via game window HWND lookup)
-- [ ] **POPUP-04**: Popup is DPI-aware and renders correctly on 4K and scaled displays
+- [x] **POPUP-04**: Popup is DPI-aware and renders correctly on 4K and scaled displays
 - [ ] **POPUP-05**: 100% completion celebration popup fires when a game's achievement set hits 100%; placed last in the queue if other unlocks are pending
 - [ ] **POPUP-06**: Tier-based popup styling — rare unlocks receive richer animation/sound treatment; degrades gracefully to standard popup when rarity data is unavailable
 - [ ] **POPUP-07**: Rarity percentage rendered in popup when sourced from Steam `appcache` global stats; rendered without rarity when data is unavailable
@@ -37,7 +37,7 @@
 
 - [ ] **GAME-01**: Hybrid game-launch detection — read Steam currently-playing state when available; fall back to `sysinfo` process scanner with `appmanifest_*.acf` matching for Goldberg / non-Steam launches
 - [ ] **GAME-02**: Achievement schema + icon resolution at game-launch time, async + non-blocking; popups using cached schema appear without latency
-- [ ] **GAME-03**: Schema metadata and achievement icons cached in local SQLite (`hallmark.db`); subsequent runs operate fully offline once cache is warm
+- [x] **GAME-03**: Schema metadata and achievement icons cached in local SQLite (`hallmark.db`); subsequent runs operate fully offline once cache is warm
 
 ### Polish
 
@@ -104,7 +104,7 @@
 | POPUP-01 | Phase 2 | Pending |
 | POPUP-02 | Phase 2 | Pending |
 | POPUP-03 | Phase 2 | Pending |
-| POPUP-04 | Phase 2 | Pending |
+| POPUP-04 | Phase 2 | Complete |
 | POPUP-05 | Phase 2 | Pending |
 | POPUP-06 | Phase 2 | Pending |
 | POPUP-07 | Phase 2 | Pending |
@@ -114,7 +114,7 @@
 | COMP-03 | Phase 2 | Pending |
 | GAME-01 | Phase 2 | Pending |
 | GAME-02 | Phase 2 | Pending |
-| GAME-03 | Phase 2 | Pending |
+| GAME-03 | Phase 2 | Complete |
 | POL-01 | Phase 4 | Pending |
 | POL-02 | Phase 4 | Pending |
 | DIST-01 | Phase 4 | Pending |

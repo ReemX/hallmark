@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 UI-SPEC approved
-last_updated: "2026-05-08T10:29:53.050Z"
-last_activity: 2026-05-08 -- Phase 02 planning complete
+stopped_at: Completed Phase 02 Plan 01 - Phase 2 Foundation Scaffold
+last_updated: "2026-05-08T10:55:00.000Z"
+last_activity: 2026-05-08
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 12
-  completed_plans: 6
-  percent: 50
+  completed_plans: 7
+  percent: 58
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-07)
 
 **Core value:** Make PC achievement unlocks feel as satisfying as a PS5 trophy ding — every time, in every supported game.
-**Current focus:** Phase 01 — detection-pipeline-foundation
+**Current focus:** Phase 02 — Premium UI — Popup, Companion & Game Session
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
+Phase: 02 (Premium UI — Popup, Companion & Game Session) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-05-08 -- Phase 02 planning complete
+Last activity: 2026-05-08
 
-Progress: [██████████] 100%
+Progress: [██████░░░░] 58%
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [██████████] 100%
 | Phase 01-detection-pipeline-foundation P03 | 3 | 2 tasks | 1 files |
 | Phase 01-detection-pipeline-foundation P04 | 4 | 2 tasks | 3 files |
 | Phase 01 P05 | 12 | 3 tasks | 5 files |
+| Phase 02-premium-ui-popup-companion-game-session P01 | 30 | 3 tasks | 36 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,10 @@ Recent decisions affecting current work:
 - [Phase ?]: Plan 01-05: tokio signal feature added (Rule 3 auto-fix) — required for tokio::signal::ctrl_c().await; Plan 01-01 omitted it
 - [Phase ?]: Plan 01-05: Public *_pub_for_tests shims in paths.rs over relaxing pub(crate) visibility (minimum-surface delta for external integration tests)
 - [Phase ?]: Plan 01-05: SC3 builds real on-disk Steam-library fixture (B-01 fix); SC4 uses two real MockAdapter file-event paths (W-08 fix)
+- [Phase 02]: Plan 02-01: app.windows=[] — popup and companion windows created programmatically in Plan 05 so WS_EX_NOACTIVATE HWND patch runs immediately post-build
+- [Phase 02]: Plan 02-01: icon_path stored as filesystem path (not BLOB) in schema_cache — keeps row reads cheap, WebView2 loads via convertFileSrc() without SQLite roundtrip
+- [Phase 02]: Plan 02-01: Stub-first module pattern — lib.rs declares all 6 Phase 2 modules upfront; Wave 2 plans modify only file contents, never lib.rs (eliminates file conflicts)
+- [Phase 02]: Plan 02-01: 100% completion flag reuses existing settings table (key=completion_&lt;app_id&gt;) per D-11 — no new table needed
 
 ### Pending Todos
 
@@ -110,6 +115,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-08T08:49:30.069Z
+Last session: 2026-05-08T10:50:01.524Z
 Stopped at: Phase 2 UI-SPEC approved
-Resume file: .planning/phases/02-premium-ui-popup-companion-game-session/02-UI-SPEC.md
+Resume file: None
