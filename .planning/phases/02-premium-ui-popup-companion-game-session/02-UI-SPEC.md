@@ -1,10 +1,11 @@
 ---
 phase: 2
 slug: premium-ui-popup-companion-game-session
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-05-08
+reviewed_at: 2026-05-08
 ---
 
 # Phase 2 — UI Design Contract
@@ -80,16 +81,15 @@ Inter is available on most modern Windows 11 machines and from a CDN via Vite as
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
 | Popup title | 14px | 600 (semibold) | 1.2 | Achievement display name in popup pill (D-02 "title bold") |
-| Popup description | 12px | 400 (regular) | 1.4 | Achievement description in popup pill — truncated to 2 lines max |
-| Popup rarity tag | 11px | 400 (regular) | 1.0 | "X.X% of players" — only shown when rarity data available (POPUP-07) |
+| Popup description | 12px | 400 (regular) | 1.4 | Achievement description in popup pill — truncated to 2 lines max; also used for rarity tag ("X.X% of players", POPUP-07) |
 | Companion heading | 16px | 600 (semibold) | 1.2 | Game name in companion header; section labels |
-| Companion body | 13px | 400 (regular) | 1.5 | Achievement title in companion list rows (COMP-02) |
-| Companion meta | 12px | 400 (regular) | 1.4 | Unlock timestamp + description in expanded row; filter chip labels |
+| Companion body | 14px | 400 (regular) | 1.5 | Achievement title in companion list rows (COMP-02); filter chip labels; sort toggle labels |
+| Companion meta | 12px | 400 (regular) | 1.4 | Unlock timestamp + description in expanded row |
 
 Declared weights: **400 (regular)** and **600 (semibold)**. No other weights used.
-Declared sizes: 11, 12, 13, 14, 16 — five sizes justified by two distinct surface contexts (popup + companion) with tighter popup hierarchy.
+Declared sizes: **12, 14, 16** — three sizes spanning both surface contexts. Popup title and companion body share 14px (both are primary row labels in their respective surfaces). Popup description and companion meta share 12px (both are secondary/supporting text). The rarity tag previously at 11px is merged into 12px — at gaming viewing distances, the distinction was sub-perceptual. The former 13px companion body is promoted to 14px to align with the popup title and eliminate the 1px-gap hierarchy problem.
 
-Source: CONTEXT.md D-02 ("title bold + description"), D-18 (filter/sort state); RESEARCH.md Pattern 5 (`popup-title`, `popup-desc`, `popup-rarity` class names). Discretion applied for exact sizes and font stack per CONTEXT.md "Claude's Discretion."
+Source: CONTEXT.md D-02 ("title bold + description"), D-18 (filter/sort state); RESEARCH.md Pattern 5 (`popup-title`, `popup-desc`, `popup-rarity` class names). Discretion applied for exact sizes and font stack per CONTEXT.md "Claude's Discretion." Revised to resolve Typography BLOCK (5 sizes → 3 sizes) and FLAG (1px-gap sizes eliminated).
 
 ---
 
