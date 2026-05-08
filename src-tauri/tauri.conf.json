@@ -4,15 +4,15 @@
   "version": "0.1.0",
   "identifier": "com.hallmark.app",
   "build": {
-    "beforeDevCommand": "",
-    "beforeBuildCommand": "",
+    "beforeDevCommand": "pnpm dev",
+    "beforeBuildCommand": "pnpm build",
     "frontendDist": "../dist",
-    "devUrl": null
+    "devUrl": "http://localhost:1420"
   },
   "app": {
     "windows": [],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; img-src 'self' data: asset: https://media.steampowered.com https://cdn.akamai.steamstatic.com https://shared.fastly.steamstatic.com; connect-src 'self' https://api.steampowered.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:"
     }
   },
   "bundle": {

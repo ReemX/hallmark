@@ -10,6 +10,16 @@ pub mod sources;
 pub mod store;
 pub mod watcher;
 
+// ---- Phase 2 modules ----
+// Each module is a stub placeholder until its owning plan populates the body.
+// Lifting these declarations into Plan 01 prevents lib.rs file conflicts in Wave 2.
+pub mod schema;        // Plan 02 — D-24 lookup chain, AchievementSchema, classify_tier
+pub mod audio;         // Plan 04 — rodio AudioDispatcher
+pub mod monitor;       // Plan 03 — Win32 HWND-by-PID + monitor placement
+pub mod popup_queue;   // Plan 05 — drain task with adaptive compression + 100% rule
+pub mod ui;            // Plan 05 — popup + companion WebviewWindowBuilder + HWND patch
+pub mod game_detect;   // Plan 03 — sysinfo + Steam state hybrid + appmanifest match
+
 use tracing_subscriber::EnvFilter;
 
 /// Initialize structured logging. Call once at process start.

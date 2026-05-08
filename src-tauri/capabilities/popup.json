@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "popup-capability",
+  "description": "Capability for the non-interactive popup overlay window. Listens to popup-show / popup-hide events emitted from Rust; no interactivity.",
+  "windows": ["popup"],
+  "permissions": [
+    "core:default",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten"
+  ]
+}
