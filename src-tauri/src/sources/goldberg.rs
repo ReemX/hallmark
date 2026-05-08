@@ -171,7 +171,7 @@ impl SourceAdapter for GoldbergAdapter {
                         "could not resolve appid (numeric parse failed and not in redirect_map); skipping");
                     continue;
                 };
-                let json = match read_with_retry(path) {
+                let json = match read_with_retry(path).await {
                     Ok(s) => s,
                     Err(e) => {
                         tracing::warn!(path = %path.display(), error = %e, "seed read failed; skip");
@@ -201,7 +201,7 @@ impl SourceAdapter for GoldbergAdapter {
             if !candidate.exists() {
                 continue;
             }
-            let json = match read_with_retry(&candidate) {
+            let json = match read_with_retry(&candidate).await {
                 Ok(s) => s,
                 Err(e) => {
                     tracing::warn!(path = %candidate.display(), error = %e,
@@ -251,7 +251,7 @@ impl SourceAdapter for GoldbergAdapter {
         };
 
         // Read with retry (PITFALLS.md #3 — file may be locked while emulator writes).
-        let json = match read_with_retry(&path) {
+        let json = match read_with_retry(&path).await {
             Ok(s) => s,
             Err(e) => {
                 tracing::warn!(path = %path.display(), error = %e, "read_with_retry failed");
@@ -314,7 +314,18 @@ impl SourceAdapter for GoldbergAdapter {
 
 /// File read with retry on Windows sharing-violation (PITFALLS.md #3).
 /// Goldberg writes the state file open-write-close; we may hit it mid-write.
-fn read_with_retry(path: &Path) -> anyhow::Result<String> {
+///
+/// WR-04: This is invoked from `async fn on_file_changed` and `async fn
+/// seed_baseline`, so the function is itself `async` and uses `tokio::time::sleep`
+/// rather than `std::thread::sleep`. The previous `std::thread::sleep` blocked
+/// the entire tokio worker for up to 150ms, which on a single-threaded runtime
+/// (the default for `#[tokio::test]`) stalled the whole runtime.
+///
+/// WR-03: `last_err.unwrap()` was safe only by virtue of the `0..3` literal
+/// guaranteeing at least one iteration. A future refactor that read the retry
+/// count from config would silently introduce a panic. Replace with an explicit
+/// match that returns a non-panicking error if no attempts ran.
+async fn read_with_retry(path: &Path) -> anyhow::Result<String> {
     let mut last_err: Option<std::io::Error> = None;
     for _ in 0..3 {
         match std::fs::read_to_string(path) {
@@ -324,12 +335,21 @@ fn read_with_retry(path: &Path) -> anyhow::Result<String> {
                     || e.raw_os_error() == Some(32) /* ERROR_SHARING_VIOLATION */ =>
             {
                 last_err = Some(e);
-                std::thread::sleep(Duration::from_millis(50));
+                tokio::time::sleep(Duration::from_millis(50)).await;
             }
             Err(e) => return Err(e.into()),
         }
     }
-    Err(last_err.unwrap().into())
+    match last_err {
+        Some(e) => Err(e.into()),
+        // WR-03: unreachable today (the `0..3` literal guarantees at least one
+        // iteration), but a future refactor that derives the retry count from a
+        // config parameter could land here. Returning an error rather than
+        // panicking is the right behaviour.
+        None => Err(anyhow::anyhow!(
+            "read_with_retry: 0 attempts configured; refusing"
+        )),
+    }
 }
 
 #[cfg(test)]
