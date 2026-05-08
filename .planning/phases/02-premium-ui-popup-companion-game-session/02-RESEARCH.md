@@ -1213,32 +1213,40 @@ See the dedicated section above. Key points:
 | A9 | Windows 10 1703+ baseline holds for Hallmark v1 users (per-monitor DPI v2 default) | Section C | Older Win10 falls back to per-monitor v1 — popup may scale incorrectly across monitors with mixed DPI; manifest tweak fallback documented at gist.github.com/emoacht |
 | A10 | rodio 0.22's `mixer().add()` is non-blocking and lock-free in the hot path | Section D Pattern 3 | If blocking: move audio dispatch to `tokio::task::spawn_blocking` from the queue task |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All five Phase 2 open questions are addressed below. Each entry preserves the original framing for traceability and adds a `RESOLVED:` line documenting how Phase 2 plans handled it (or, where applicable, why the question is acknowledged as deferred to Phase 3).
+
 
 1. **What's the actual WASAPI shared-mode latency on representative gaming hardware?**
    - What we know: Windows 10+ baseline ~22ms; can be 30-100ms on older drivers.
    - What's unclear: Hallmark's specific user hardware distribution.
    - Recommendation: Build a small measurement binary (Section D), run on 2-3 representative rigs during Plan 02-XX, lock the rodio-vs-kira decision based on data.
+   - **RESOLVED:** Phase 2 ships rodio 0.22 by default per CLAUDE.md stack pin; the kira 0.12 fallback path is documented in CLAUDE.md alternatives + Plan 04 acceptance notes. Empirical measurement is captured as Assumption A3 + Pitfall 6 and is a polish-time concern (Plan 07 closing checklist + ROADMAP research flag) rather than a Phase 2 blocker — popups fire visually even if audio init fails (Plan 07 sink-drainer fallback).
 
 2. **Does Tauri 2.11's `focusable(false)` actually map to WS_EX_NOACTIVATE on Windows?**
    - What we know: Builder method exists; behavior on Windows not explicitly documented in 2.11 release notes.
    - What's unclear: Internal implementation may apply other techniques (focus-steal-prevention without WS_EX_NOACTIVATE proper).
    - Recommendation: Defense-in-depth — apply both. Verify with a `GetWindowLongPtrW(hwnd, GWL_EXSTYLE)` read after build to confirm the flag is set; manually OR-in if missing.
+   - **RESOLVED:** Plan 05 ui.rs applies BOTH `focusable(false)` (builder-side) AND a post-creation `SetWindowLongPtrW(hwnd, GWL_EXSTYLE, current | WS_EX_NOACTIVATE | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW)` HWND patch (POPUP-08). Defense-in-depth as recommended.
 
 3. **Schema cache hit rate for Goldberg-only games.**
    - What we know: Goldberg `achievements.json` includes display_name + description for most cracks.
    - What's unclear: Some Goldberg builds strip metadata (only api_name + earned). For these, popups would degrade per D-26.
    - Recommendation: Track hit-rate in tracing; if <80%, add SteamSpy as a metadata fallback.
+   - **RESOLVED:** Plan 02 logs Goldberg-metadata hit-rate via tracing in `schema/goldberg_meta.rs`; D-26 graceful degrade (api_name as title) is honored by Plan 05's popup_queue + PopupCard. Adding SteamSpy as a fallback is parked for Phase 3 if production telemetry shows <80% hit-rate.
 
 4. **Steam library cache `librarycache` icon naming convention in 2026.**
    - What we know: `<app_id>_*.jpg` patterns vary (`_library_600x900.jpg`, `_library_hero.jpg`, `_logo.png`, etc.). Achievement icons specifically aren't in librarycache — they're at `media.steampowered.com/steamcommunity/public/images/apps/<AppID>/<icon_hash>.jpg` (resolved from binary VDF — Phase 3 territory) or from Goldberg's `achievements.json` (Phase 2 reachable).
    - What's unclear: Whether legitimate-Steam achievement icons can be resolved without binary VDF parsing.
    - Recommendation: For Phase 2, only Goldberg games get achievement-icon coverage. Legitimate Steam (Phase 3) gets icons after binary VDF parsing.
+   - **RESOLVED:** Phase 2 covers Goldberg-only icons via `achievements.json`-bundled paths (Plan 02). Legitimate-Steam achievement icons via binary VDF parsing of `appcache/stats/UserGameStats_*.bin` are explicitly deferred to Phase 3 — recorded in CONTEXT.md ## Phase 2 Implementation Notes (D-21) + as a Domain Note (Section I/J).
 
 5. **100%-completion atomic update under burst-with-celebration scenario.**
    - What we know: D-12 says celebration appended last in queue.
    - What's unclear: If Phase 1 detects unlock #5 (which completes the set) WHILE the queue task is mid-emit on unlock #3, does the `celebration_pending` flag survive correctly? The cleaner pattern is to mark it on detect (in popup_queue) and only emit when sink is empty.
    - Recommendation: Implement and unit-test. The atomicity is local to one task's state, so straightforward.
+   - **RESOLVED:** Plan 05's popup_queue uses a `tokio::select!` biased drain that processes every received event via `process_event` and only emits the pending celebration in the idle branch (50ms quiet window). Two new W-6 unit tests verify burst-of-5 with zero drops AND celebration appended last when 100% hits mid-burst (event 3 of 5). The previous `try_recv() → break` drop pattern is gone (B-2 fix).
 
 ## Project Constraints (from CLAUDE.md)
 

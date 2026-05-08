@@ -136,6 +136,20 @@ The mechanism layer (file watcher, SQLite store, RawUnlockEvent pipeline, cross-
 </specifics>
 
 <deferred>
+## Phase 2 Implementation Notes
+
+### D-21 Steam-state-authoritative leg — DEFERRED to Phase 3
+
+D-21 specifies the hybrid game-launch detection precedence: Steam state (when Steam reports a current app) is authoritative, with sysinfo polling + `appmanifest_*.acf` matching as the fallback. Phase 2 implements ONLY the sysinfo + appmanifest leg.
+
+The Steam-state-authoritative leg requires binary VDF parsing of Steam's `localconfig.vdf` "currently playing" field. RESEARCH.md Section K confirms there is no public Steam IPC for this in 2026 — every available signal requires either (a) binary VDF parsing of local Steam config files (Phase 3 territory, paired with the legit Steam unlock adapter) or (b) third-party hacks excluded by PROJECT.md scope.
+
+**What this means for Phase 2:**
+- `game_detect/mod.rs` runs the sysinfo polling loop only; the D-22 conflict-resolution hook is logged at `tracing::trace!` but is a no-op until Phase 3 wires the binary-VDF leg.
+- `game-started` events use sysinfo'-derived `app_id` + `pid` (Plan 03 emits the pair so Plan 07's listener can populate `current_pid` for popup monitor placement — POPUP-03 functional routing).
+- Goldberg-emulated and non-Steam launches are correctly identified by Phase 2's leg; legitimate Steam-without-Goldberg launches are also identified via `steamapps/common/<installdir>` matching.
+- The only behavioral gap vs full D-21 is conflict resolution between Steam'-state and sysinfo when they disagree. Phase 2 logs the disagreement at `tracing::warn` but currently has no Steam-state signal to compare against, so this is a no-op in practice.
+
 ## Deferred Ideas
 
 - **Ultra-rare third tier** (e.g. <2% global unlock rate gets a fourth-stem celebratory mix) — captured under POPUP-V2 in REQUIREMENTS.md if a future iteration revisits tiering.
@@ -143,6 +157,7 @@ The mechanism layer (file watcher, SQLite store, RawUnlockEvent pipeline, cross-
 - **Companion text search by title** — defer until users hit a game with >100 achievements where filter+sort isn't enough.
 - **Click-through always-on-top toggle for companion** — defer; matches future v2 streamer/privacy-mode work (QOL-V2-02).
 - **Custom theme system / sound replacement** — explicitly out of scope per PROJECT.md "signature style locked"; tracked there, not re-decided here.
+- **Replace synthetic placeholder SFX in `assets/sfx/*.wav` with locked signature multi-layer mix** (D-05 ding+riser+whoosh, D-06 sparkle/choir stab, D-12 4-stem celebration) before any public release. Phase 4 polish task — current Plan 04 ships rust-generated synthetic placeholders so Phase 2 unblocks.
 
 </deferred>
 
