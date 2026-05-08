@@ -7,6 +7,7 @@ license      = { workspace = true }
 repository   = { workspace = true }
 description  = "PSN/Xbox-grade achievement satisfaction for PC gaming."
 publish      = false
+default-run  = "hallmark"
 
 [build-dependencies]
 # tauri-build versioning is independent of the tauri runtime — runtime is 2.11, build is 2.6.x.

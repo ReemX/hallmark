@@ -5,7 +5,7 @@ html, body {
   font-family: "Inter", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   color: #FFFFFF;
 }
-#root { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: flex-end; }
+#root { width: 100vw; height: 100vh; }
 
 /* ===== Pill silhouette (D-02 wide horizontal pill, 440x96 logical) ===== */
 .popup-pill {
@@ -14,12 +14,15 @@ html, body {
   padding: 16px 24px 16px 16px;
   border-radius: 48px; /* full-pill stadium per UI-SPEC */
   background: rgba(12, 12, 16, 0.82);
+  background-clip: padding-box;
+  overflow: hidden;
+  clip-path: inset(0 round 48px); /* hard rounded clip — fixes Chromium backdrop-filter overflow */
+  isolation: isolate;
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(120, 220, 255, 0.85);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   color: #FFFFFF;
-  /* Top inner highlight per UI-SPEC popup secondary 30% */
 }
 
 /* ===== Icon disc (56px circular per UI-SPEC Icon Treatment) ===== */
@@ -52,7 +55,7 @@ html, body {
 /* ===== Tier modifiers ===== */
 .tier-rare {
   background: rgba(12, 12, 16, 0.88);
-  border-color: rgba(180, 255, 255, 1.0);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 .tier-rare .popup-icon img,
 .tier-rare .popup-icon-placeholder {
@@ -62,7 +65,7 @@ html, body {
 /* ===== 100% celebration (D-12) ===== */
 .tier-completion {
   background: rgba(20, 14, 30, 0.90);
-  border-color: rgba(220, 180, 255, 0.90);
+  border-color: rgba(220, 180, 255, 0.40);
   animation: completion-pulse 220ms ease-out 1;
 }
 .tier-completion .popup-icon img,

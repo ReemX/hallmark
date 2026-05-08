@@ -74,15 +74,15 @@ pub fn monitor_rect_for_hwnd(hwnd: HWND) -> Option<(i32, i32, i32, i32)> {
 pub fn monitor_rect_for_hwnd(_hwnd: ()) -> Option<(i32, i32, i32, i32)> { None }
 
 /// Compute popup placement in PHYSICAL pixels.
-/// Anchor: top-right, ~25% from top edge, 32px margin from screen edge (D-01).
+/// Anchor: top-right, 16px margin from top + right (matches PS5 trophy placement).
 /// Pure math — no cfg gate. Tests run on any target.
 pub fn popup_position(
-    mon_x: i32, mon_y: i32, mon_w: i32, mon_h: i32,
-    popup_w: i32, popup_h: i32,
+    mon_x: i32, mon_y: i32, mon_w: i32, _mon_h: i32,
+    popup_w: i32, _popup_h: i32,
 ) -> (i32, i32) {
-    let margin = 32_i32;
+    let margin = 16_i32;
     let x = mon_x + mon_w - popup_w - margin;
-    let y = mon_y + (mon_h / 4) - (popup_h / 2);
+    let y = mon_y + margin;
     (x, y)
 }
 
@@ -91,35 +91,31 @@ mod tests {
     use super::popup_position;
 
     #[test]
-    fn popup_position_top_right_quarter_down_1080p() {
-        // 1920×1080 monitor at origin, popup 440×96 logical (matches D-14 size).
-        // Tauri set_position takes physical px; this is also physical for 100% DPI.
+    fn popup_position_top_right_1080p() {
         let (x, y) = popup_position(0, 0, 1920, 1080, 440, 96);
-        assert_eq!(x, 1920 - 440 - 32, "x = right-edge - popup_w - margin");
-        assert_eq!(y, (1080 / 4) - (96 / 2), "y = quarter-down - popup_h/2");
+        assert_eq!(x, 1920 - 440 - 16, "x = right-edge - popup_w - margin");
+        assert_eq!(y, 16, "y = top + margin");
     }
 
     #[test]
     fn popup_position_top_right_4k_secondary() {
-        // 4K secondary monitor positioned to the right of a primary.
-        let (x, y) = popup_position(1920, 0, 3840, 2160, 880, 192); // 2x DPI popup
-        assert_eq!(x, 1920 + 3840 - 880 - 32);
-        assert_eq!(y, 0 + (2160 / 4) - (192 / 2));
+        let (x, y) = popup_position(1920, 0, 3840, 2160, 880, 192);
+        assert_eq!(x, 1920 + 3840 - 880 - 16);
+        assert_eq!(y, 0 + 16);
     }
 
     #[test]
     fn popup_position_negative_secondary_to_left() {
-        // Secondary monitor at negative x (to the left of primary).
         let (x, y) = popup_position(-1920, 0, 1920, 1080, 440, 96);
-        assert_eq!(x, -1920 + 1920 - 440 - 32);
-        assert_eq!(y, 0 + (1080 / 4) - (96 / 2));
+        assert_eq!(x, -1920 + 1920 - 440 - 16);
+        assert_eq!(y, 16);
     }
 
     #[test]
-    fn popup_position_uses_32px_margin_consistently() {
+    fn popup_position_uses_16px_margin_consistently() {
         for (w, _h) in [(1920, 1080), (3840, 2160), (2560, 1440)] {
             let (x, _) = popup_position(0, 0, w, 1080, 440, 96);
-            assert_eq!(x + 440 + 32, w, "right edge of popup + margin = monitor_w");
+            assert_eq!(x + 440 + 16, w, "right edge of popup + margin = monitor_w");
         }
     }
 }

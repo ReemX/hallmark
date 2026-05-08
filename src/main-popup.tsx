@@ -9,6 +9,7 @@ function PopupRoot() {
   const [payload, setPayload] = useState<PopupPayload | null>(null);
 
   useEffect(() => {
+    if (!("__TAURI_INTERNALS__" in window)) return; // browser preview — Tauri APIs unavailable
     const unShow = listen<PopupPayload>("popup-show", (e) => setPayload(e.payload));
     const unHide = listen("popup-hide", () => setPayload(null));
     return () => {

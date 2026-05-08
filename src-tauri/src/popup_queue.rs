@@ -197,15 +197,16 @@ async fn process_event(
         });
     }
 
-    // ----- Wait through animation cycle -----
-    // 300ms slide-in + hold + 300ms slide-out (D-08).
-    sleep(Duration::from_millis(300 + hold_ms + 300)).await;
+    // ----- Wait through slide-in + hold, THEN emit hide so React's
+    // AnimatePresence has the full 300ms slide-out window before the next
+    // show overwrites payload (D-08).
+    sleep(Duration::from_millis(300 + hold_ms)).await;
     let _ = app.emit_to("popup", "popup-hide", ());
     // DO NOT popup.hide() here (Pitfall 4). React's AnimatePresence hides
     // visually via opacity transition.
 
-    // ----- Inter-popup gap -----
-    sleep(Duration::from_millis(gap_ms)).await;
+    // ----- Slide-out + inter-popup gap -----
+    sleep(Duration::from_millis(300 + gap_ms)).await;
 }
 
 /// Emit the 100% celebration popup (D-12). Plays the Completion-tier SFX,
@@ -240,26 +241,33 @@ async fn emit_celebration(
 /// fails (popup falls back to its current position; D-23 graceful degrade).
 async fn position_popup(app: &AppHandle, current_pid: &Arc<TokioMutex<Option<u32>>>) {
     let pid = { *current_pid.lock().await };
-    let Some(pid) = pid else { return };
+    let popup = match app.get_webview_window("popup") {
+        Some(w) => w,
+        None => return,
+    };
+
     #[cfg(target_os = "windows")]
     {
-        let Some(hwnd) = monitor::hwnd_for_pid(pid) else {
-            tracing::debug!(pid, "no HWND for pid; popup uses last-set position");
-            return;
-        };
-        let Some((mx, my, mw, mh)) = monitor::monitor_rect_for_hwnd(hwnd) else {
-            tracing::debug!(pid, "no monitor rect; popup uses last-set position");
-            return;
-        };
-        // 440 × 96 logical px is the popup inner_size. Tauri's PhysicalPosition
-        // takes physical px. Per-monitor v2 DPI is automatic; the math here
-        // uses the rcWork (physical) we got from GetMonitorInfoW directly.
-        let (x, y) = monitor::popup_position(mx, my, mw, mh, 440, 96);
-        if let Some(popup) = app.get_webview_window("popup") {
+        // Try game's monitor first (POPUP-03). Fall back to primary monitor.
+        let rect = pid
+            .and_then(monitor::hwnd_for_pid)
+            .and_then(monitor::monitor_rect_for_hwnd)
+            .or_else(|| {
+                popup
+                    .primary_monitor()
+                    .ok()
+                    .flatten()
+                    .map(|m| {
+                        let p = m.position();
+                        let s = m.size();
+                        (p.x, p.y, s.width as i32, s.height as i32)
+                    })
+            });
+        if let Some((mx, my, mw, mh)) = rect {
+            let (x, y) = monitor::popup_position(mx, my, mw, mh, 440, 96);
             let _ = popup.set_position(PhysicalPosition::new(x, y));
         }
     }
-    // Suppress unused variable warning on non-Windows.
     #[cfg(not(target_os = "windows"))]
     let _ = pid;
 }

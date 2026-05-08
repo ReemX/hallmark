@@ -8,6 +8,7 @@ export function useGameSession() {
   const [resolveStage, setResolveStage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!("__TAURI_INTERNALS__" in window)) return; // browser preview — Tauri APIs unavailable
     const u1 = listen<GameStartedPayload>("game-started", (e) => {
       setAppId(e.payload.app_id);
       setResolveStage(null);

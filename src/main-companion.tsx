@@ -37,6 +37,7 @@ function CompanionRoot() {
 
   // ----- D-17: show/hide on game-start/stop -----
   useEffect(() => {
+    if (!("__TAURI_INTERNALS__" in window)) return; // browser preview — Tauri APIs unavailable
     const w = getCurrentWebviewWindow();
     if (appId !== null) {
       w.show().catch(() => {});

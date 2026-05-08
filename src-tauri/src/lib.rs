@@ -234,10 +234,10 @@ pub fn run() {
                 std::sync::Arc::new(tokio::sync::Mutex::new(None));
 
             // ----- 12. Spawn pipeline tasks -----
-            tokio::spawn(watcher::run_watcher(adapters, raw_tx));
+            tauri::async_runtime::spawn(watcher::run_watcher(adapters, raw_tx));
             tracing::info!("spawned run_watcher");
 
-            tokio::spawn(watcher::run_pipeline(
+            tauri::async_runtime::spawn(watcher::run_pipeline(
                 raw_rx,
                 store.clone(),
                 session_id.clone(),
@@ -252,7 +252,7 @@ pub fn run() {
                 let session_for_queue = session_id.clone();
                 let schema_for_queue = schema_cache.clone();
                 let pid_for_queue = current_pid.clone();
-                tokio::spawn(async move {
+                tauri::async_runtime::spawn(async move {
                     popup_queue::run(
                         app_for_queue, sink_rx, schema_for_queue, audio_arc,
                         store_for_queue, session_for_queue, pid_for_queue,
@@ -261,7 +261,7 @@ pub fn run() {
                 tracing::info!("spawned popup_queue");
             } else {
                 // Drain sink so run_pipeline doesn't backpressure when audio is unavailable.
-                tokio::spawn(async move {
+                tauri::async_runtime::spawn(async move {
                     let mut rx = sink_rx;
                     while let Some(_) = rx.recv().await {
                         tracing::debug!("event drained (no audio device — popup_queue not started)");
@@ -274,7 +274,7 @@ pub fn run() {
             let store_for_detect = store.clone();
             let libraries_for_detect = steam_libraries.clone();
             let goldberg_for_detect = goldberg_map.clone();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 game_detect::run(
                     app_for_detect, store_for_detect,
                     libraries_for_detect, goldberg_for_detect,
@@ -309,7 +309,7 @@ pub fn run() {
                 // resolve the game's HWND on the next fire (POPUP-03 functional routing).
                 if let Some(pid) = pid_opt {
                     let pid_handle = pid_for_listener.clone();
-                    tokio::spawn(async move {
+                    tauri::async_runtime::spawn(async move {
                         let mut guard = pid_handle.lock().await;
                         *guard = Some(pid);
                         tracing::info!(app_id, pid, "current_pid updated for popup placement");
@@ -327,7 +327,7 @@ pub fn run() {
                         .filter(|(_, gid)| **gid == app_id)
                         .map(|(path, _)| path.join("achievements.json"))
                         .collect();
-                tokio::spawn(async move {
+                tauri::async_runtime::spawn(async move {
                     tracing::info!(app_id, count = goldberg_paths_for_app.len(), "starting schema resolve");
                     schema_clone.resolve(app_clone, app_id, goldberg_paths_for_app).await;
                 });
