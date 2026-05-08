@@ -1,0 +1,3 @@
+/* src/styles/companion.css — Plan 06 expands. */
+html, body { margin: 0; padding: 0; background: #111114; color: #F0F0F5; font-family: "Inter", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+#root { width: 100vw; min-height: 100vh; }
