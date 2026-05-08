@@ -339,7 +339,14 @@ impl SourceAdapter for MockAdapter {
             .ok()
             .and_then(|v| v.get("earned").and_then(|e| e.as_bool()))
             .unwrap_or(false);
-        let was = self.baseline.read().await.unwrap_or(false);
+        // WR-10: hold the write lock across the read-emit-update sequence so two
+        // concurrent invocations cannot both observe `was = false` and both emit.
+        // The previous read-then-write split allowed a TOCTOU window across the
+        // tx.send().await suspension point. Downstream dedup catches the duplicate
+        // anyway, but the test should reflect the contract GoldbergAdapter
+        // upholds rather than relying on dedup as a safety net.
+        let mut baseline = self.baseline.write().await;
+        let was = baseline.unwrap_or(false);
         if !was && earned_now {
             let _ = tx
                 .send(RawUnlockEvent {
@@ -350,7 +357,7 @@ impl SourceAdapter for MockAdapter {
                 })
                 .await;
         }
-        *self.baseline.write().await = Some(earned_now);
+        *baseline = Some(earned_now);
         Ok(())
     }
 }
