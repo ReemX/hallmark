@@ -5,7 +5,6 @@
 //! background tokio tasks to. This file establishes the structure; downstream plans
 //! extend `setup()` rather than restructuring.
 
-pub mod error;
 pub mod paths;
 pub mod sources;
 pub mod store;
