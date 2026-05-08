@@ -24,7 +24,7 @@
 - [x] **POPUP-04**: Popup is DPI-aware and renders correctly on 4K and scaled displays
 - [ ] **POPUP-05**: 100% completion celebration popup fires when a game's achievement set hits 100%; placed last in the queue if other unlocks are pending
 - [ ] **POPUP-06**: Tier-based popup styling — rare unlocks receive richer animation/sound treatment; degrades gracefully to standard popup when rarity data is unavailable
-- [ ] **POPUP-07**: Rarity percentage rendered in popup when sourced from Steam `appcache` global stats; rendered without rarity when data is unavailable
+- [x] **POPUP-07**: Rarity percentage rendered in popup when sourced from Steam `appcache` global stats; rendered without rarity when data is unavailable
 - [ ] **POPUP-08**: Popup uses external borderless always-on-top window (`WS_EX_TOPMOST`) with `WS_EX_NOACTIVATE` applied via `SetWindowLongW` post-creation to prevent focus-stealing from the running game
 
 ### Companion
@@ -36,7 +36,7 @@
 ### Game Session & Schema
 
 - [ ] **GAME-01**: Hybrid game-launch detection — read Steam currently-playing state when available; fall back to `sysinfo` process scanner with `appmanifest_*.acf` matching for Goldberg / non-Steam launches
-- [ ] **GAME-02**: Achievement schema + icon resolution at game-launch time, async + non-blocking; popups using cached schema appear without latency
+- [x] **GAME-02**: Achievement schema + icon resolution at game-launch time, async + non-blocking; popups using cached schema appear without latency
 - [x] **GAME-03**: Schema metadata and achievement icons cached in local SQLite (`hallmark.db`); subsequent runs operate fully offline once cache is warm
 
 ### Polish
@@ -107,13 +107,13 @@
 | POPUP-04 | Phase 2 | Complete |
 | POPUP-05 | Phase 2 | Pending |
 | POPUP-06 | Phase 2 | Pending |
-| POPUP-07 | Phase 2 | Pending |
+| POPUP-07 | Phase 2 | Complete |
 | POPUP-08 | Phase 2 | Pending |
 | COMP-01 | Phase 2 | Pending |
 | COMP-02 | Phase 2 | Pending |
 | COMP-03 | Phase 2 | Pending |
 | GAME-01 | Phase 2 | Pending |
-| GAME-02 | Phase 2 | Pending |
+| GAME-02 | Phase 2 | Complete |
 | GAME-03 | Phase 2 | Complete |
 | POL-01 | Phase 4 | Pending |
 | POL-02 | Phase 4 | Pending |
