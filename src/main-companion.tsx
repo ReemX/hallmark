@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { listen } from "@tauri-apps/api/event";
+import { AnimatePresence } from "framer-motion";
 import { useGameSession } from "./hooks/useGameSession";
 import { CompanionHeader } from "./components/CompanionHeader";
 import { FilterBar } from "./components/FilterBar";
@@ -9,8 +11,9 @@ import { SortToggle } from "./components/SortToggle";
 import { AchievementRow } from "./components/AchievementRow";
 import { SkeletonRow } from "./components/SkeletonRow";
 import { EmptyState } from "./components/EmptyState";
+import { UpdateModal } from "./components/UpdateModal";
 import "./styles/companion.css";
-import type { AchievementSchema } from "./types";
+import type { AchievementSchema, UpdateInfo } from "./types";
 
 interface CompanionState {
   app_id: number;
@@ -34,6 +37,42 @@ function CompanionRoot() {
   const [state, setState] = useState<CompanionState | null>(null);
   const [prefs, setPrefs] = useState<CompanionPrefs | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // ----- Phase 4 D-18: update-available modal -----
+  const [pendingUpdate, setPendingUpdate] = useState<UpdateInfo | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  // Listen for update-available event from the Rust backend (spawned by updater_glue).
+  useEffect(() => {
+    if (!("__TAURI_INTERNALS__" in window)) return;
+    const unsub = listen<UpdateInfo>("update-available", (e) => {
+      setPendingUpdate(e.payload);
+    });
+    return () => { unsub.then((u) => u()); };
+  }, []);
+
+  // Track companion visibility via game-started / game-stopped events (D-18).
+  // Modal only fires on the rising edge (hidden → visible), not on mount alone.
+  const [companionVisible, setCompanionVisible] = useState(false);
+  useEffect(() => {
+    if (!("__TAURI_INTERNALS__" in window)) return;
+    const unsubStart = listen("game-started", () => setCompanionVisible(true));
+    const unsubStop = listen("game-stopped", () => setCompanionVisible(false));
+    return () => {
+      unsubStart.then((u) => u());
+      unsubStop.then((u) => u());
+    };
+  }, []);
+
+  // Open the modal on the rising edge of companion visibility.
+  const [prevVisible, setPrevVisible] = useState(false);
+  useEffect(() => {
+    const showTransition = !prevVisible && companionVisible;
+    if (pendingUpdate && showTransition) {
+      setModalOpen(true);
+    }
+    setPrevVisible(companionVisible);
+  }, [pendingUpdate, companionVisible, prevVisible]);
 
   // ----- D-17: show/hide on game-start/stop -----
   useEffect(() => {
@@ -90,36 +129,80 @@ function CompanionRoot() {
   // ----- Render -----
   if (error) {
     return (
-      <div className="companion-shell">
-        <CompanionHeader gameName="Hallmark" sessionEarned={0} />
-        <EmptyState variant="schema-failed" />
-      </div>
+      <>
+        <div className="companion-shell">
+          <CompanionHeader gameName="Hallmark" sessionEarned={0} />
+          <EmptyState variant="schema-failed" />
+        </div>
+        <AnimatePresence>
+          {modalOpen && pendingUpdate && (
+            <UpdateModal
+              key="update-modal"
+              info={pendingUpdate}
+              onDismiss={() => setModalOpen(false)}
+            />
+          )}
+        </AnimatePresence>
+      </>
     );
   }
   if (appId === null) {
     return (
-      <div className="companion-shell">
-        <CompanionHeader gameName="Hallmark" sessionEarned={0} />
-        <EmptyState variant="no-game" />
-      </div>
+      <>
+        <div className="companion-shell">
+          <CompanionHeader gameName="Hallmark" sessionEarned={0} />
+          <EmptyState variant="no-game" />
+        </div>
+        <AnimatePresence>
+          {modalOpen && pendingUpdate && (
+            <UpdateModal
+              key="update-modal"
+              info={pendingUpdate}
+              onDismiss={() => setModalOpen(false)}
+            />
+          )}
+        </AnimatePresence>
+      </>
     );
   }
   if (!state || !prefs) {
     return (
-      <div className="companion-shell">
-        <CompanionHeader gameName="Loading game…" sessionEarned={0} />
-        <div className="companion-list" role="list">
-          {Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)}
+      <>
+        <div className="companion-shell">
+          <CompanionHeader gameName="Loading game…" sessionEarned={0} />
+          <div className="companion-list" role="list">
+            {Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)}
+          </div>
         </div>
-      </div>
+        <AnimatePresence>
+          {modalOpen && pendingUpdate && (
+            <UpdateModal
+              key="update-modal"
+              info={pendingUpdate}
+              onDismiss={() => setModalOpen(false)}
+            />
+          )}
+        </AnimatePresence>
+      </>
     );
   }
   if (state.schema.length === 0) {
     return (
-      <div className="companion-shell">
-        <CompanionHeader gameName="Loading game…" sessionEarned={Object.keys(state.earned).length} />
-        <EmptyState variant={resolveStage ? "no-achievements" : "loading"} />
-      </div>
+      <>
+        <div className="companion-shell">
+          <CompanionHeader gameName="Loading game…" sessionEarned={Object.keys(state.earned).length} />
+          <EmptyState variant={resolveStage ? "no-achievements" : "loading"} />
+        </div>
+        <AnimatePresence>
+          {modalOpen && pendingUpdate && (
+            <UpdateModal
+              key="update-modal"
+              info={pendingUpdate}
+              onDismiss={() => setModalOpen(false)}
+            />
+          )}
+        </AnimatePresence>
+      </>
     );
   }
 
@@ -142,27 +225,38 @@ function CompanionRoot() {
   });
 
   return (
-    <div className="companion-shell">
-      <CompanionHeader
-        gameName={`App ${state.app_id}`}
-        sessionEarned={Object.keys(state.earned).length}
-      />
-      <div className="companion-controls">
-        <FilterBar value={filter} onChange={onFilterChange} />
-        <SortToggle value={sort} onChange={onSortChange} />
+    <>
+      <div className="companion-shell">
+        <CompanionHeader
+          gameName={`App ${state.app_id}`}
+          sessionEarned={Object.keys(state.earned).length}
+        />
+        <div className="companion-controls">
+          <FilterBar value={filter} onChange={onFilterChange} />
+          <SortToggle value={sort} onChange={onSortChange} />
+        </div>
+        <div className="companion-list" role="list">
+          {sorted.map((a) => (
+            <AchievementRow
+              key={a.ach_api_name}
+              ach={a}
+              earnedAt={state.earned[a.ach_api_name] ?? null}
+              expanded={expandedId === a.ach_api_name}
+              onToggle={() => onToggleExpand(a.ach_api_name)}
+            />
+          ))}
+        </div>
       </div>
-      <div className="companion-list" role="list">
-        {sorted.map((a) => (
-          <AchievementRow
-            key={a.ach_api_name}
-            ach={a}
-            earnedAt={state.earned[a.ach_api_name] ?? null}
-            expanded={expandedId === a.ach_api_name}
-            onToggle={() => onToggleExpand(a.ach_api_name)}
+      <AnimatePresence>
+        {modalOpen && pendingUpdate && (
+          <UpdateModal
+            key="update-modal"
+            info={pendingUpdate}
+            onDismiss={() => setModalOpen(false)}
           />
-        ))}
-      </div>
-    </div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
