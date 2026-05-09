@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-05-09T09:10:56.076Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-05-09T09:19:11.696Z"
 last_activity: 2026-05-09
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 17
-  completed_plans: 16
-  percent: 94
+  completed_plans: 17
+  percent: 100
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 ## Current Position
 
 Phase: 03 (Remaining Source Adapters) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-05-09
 
-Progress: [█████████░] 94%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Progress: [█████████░] 94%
 | Phase 03 P00 | 12 | 2 tasks | 10 files |
 | Phase 03 P01 | 8min | 2 tasks | 6 files |
 | Phase 03 P02 | 4min | 1 tasks | 1 files |
+| Phase 03 P03 | 8min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -123,6 +124,13 @@ Recent decisions affecting current work:
 - [Phase ?]: Plan 03-02: 1/true equivalence is case-insensitive — matches real CreamAPI writes that use mixed case (True, TRUE, 1)
 - [Phase ?]: Plan 03-02: discover_paths uses dirs::data_dir() (not config_dir) — resolves to %APPDATA%\Roaming on Windows where CreamAPI installs
 - [Phase ?]: Plan 03-02: Numeric-appid filter applied at discover_paths (not adapter time) — non-numeric subdirs in %APPDATA%\CreamAPI skipped before becoming watch roots
+- [Phase ?]: Plan 03-03: CRC bytes stored reversed in stats.bin
+- [Phase ?]: Plan 03-03: All CRC hex strings zero-padded to 8 chars (Pitfall #3) — both producer and consumer use {:08x} format
+- [Phase ?]: Plan 03-03: Defensive count cap = min(declared, (bytes.len() - 4) / 24) prevents tampered i32::MAX from triggering overflow (T-33-T1)
+- [Phase ?]: Plan 03-03: value>1 records are stats not achievements — skipped silently in parse_sse_stats; only value in {0,1} emits SseRecord
+- [Phase ?]: Plan 03-03: Goldberg companion file is v1 candidate source for CRC reverse map; Phase 2 SchemaCache integration deferred to Plan 04 polish
+- [Phase ?]: Plan 03-03: Placeholder format <crc:0x{:08x}> when no candidate api_name resolves — popup still fires with degraded display (Pitfall #8 analog)
+- [Phase ?]: Plan 03-03: User\Achievements.ini variant (Hydra-referenced) logged warn and skipped during discovery — RESEARCH.md Open Question #2 deferral to Phase 4 polish
 
 ### Pending Todos
 
@@ -141,6 +149,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-09T09:10:56.066Z
-Stopped at: Completed 03-02-PLAN.md
+Last session: 2026-05-09T09:19:11.687Z
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None

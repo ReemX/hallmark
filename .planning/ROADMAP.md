@@ -70,7 +70,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [x] 03-00-PLAN.md — Spike: confirm appcache/stats path empirically, fix REQUIREMENTS.md DETECT-02, write empirical-vdf-NOTES.md, add Cargo deps (byteorder + crc32fast), extend SourceKind enum + DiscoveredPaths struct, declare 4 stub source modules
   - [x] 03-01-PLAN.md — SteamLegit adapter + hand-rolled binary VDF reader (vdf_binary.rs) + path-discovery extension reading HKCU registry user IDs (DETECT-02)
   - [x] 03-02-PLAN.md — CreamAPI adapter + 12-LoC INI parser + path-discovery extension enumerating %APPDATA%/CreamAPI/<appid>/ (DETECT-03)
-  - [ ] 03-03-PLAN.md — SmartSteamEmu adapter (stats.bin variant) + 24-byte record parser + lazy CRC32 to API-name reverse lookup + path-discovery extension (DETECT-04)
+  - [x] 03-03-PLAN.md — SmartSteamEmu adapter (stats.bin variant) + 24-byte record parser + lazy CRC32 to API-name reverse lookup + path-discovery extension (DETECT-04)
   - [ ] 03-04-PLAN.md — Wire 4 adapters in lib.rs::run(), integration tests for all 3 ROADMAP success criteria including 3-source dedup verification
 
 ### Phase 4: Polish & Distribution

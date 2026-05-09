@@ -10,7 +10,7 @@
 - [x] **DETECT-01**: Real-time watcher detects unlocks from Goldberg SteamEmu output, including default `%APPDATA%\Goldberg SteamEmu Saves\` and `local_save.txt` redirected paths
 - [x] **DETECT-02**: Real-time watcher detects unlocks from legitimate Steam (binary VDF parser of `<SteamPath>\appcache\stats\UserGameStats_<userid>_<appid>.bin` for achievement state, with `<SteamPath>\appcache\stats\UserGameStatsSchema_<appid>.bin` for stat-slot to API-name mapping). NOTE: Originally cited `userdata/<steamid>/<appid>/remote/` — that is Steam Cloud save storage, not achievement state. Corrected 2026-05-09 per `.planning/phases/03-remaining-source-adapters/empirical-vdf-NOTES.md`.
 - [x] **DETECT-03**: Real-time watcher detects unlocks from CreamAPI per-appid output
-- [ ] **DETECT-04**: Real-time watcher detects unlocks from SmartSteamEmu per-persona output
+- [x] **DETECT-04**: Real-time watcher detects unlocks from SmartSteamEmu per-persona output
 - [x] **DETECT-05**: First-launch state seeding — baseline existing achievement state from disk before attaching change handlers (no install-time spam of historic unlocks)
 - [x] **DETECT-06**: 500ms debounce + content-hash equality check on file events (no double-popups for a single logical write)
 - [x] **DETECT-07**: Cross-source duplicate suppression — one logical unlock observed by multiple adapters produces exactly one popup
@@ -96,7 +96,7 @@
 | DETECT-01 | Phase 1 | Complete |
 | DETECT-02 | Phase 3 | Complete |
 | DETECT-03 | Phase 3 | Complete |
-| DETECT-04 | Phase 3 | Pending |
+| DETECT-04 | Phase 3 | Complete |
 | DETECT-05 | Phase 1 | Complete |
 | DETECT-06 | Phase 1 | Complete |
 | DETECT-07 | Phase 1 | Complete |
