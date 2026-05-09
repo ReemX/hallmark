@@ -29,3 +29,6 @@ src/**/*.d.ts
 /hallmark.key
 /hallmark.key.pub
 *.tauri.key
+
+# Claude Code runtime task lock
+.claude/scheduled_tasks.lock
