@@ -439,32 +439,40 @@ impl SourceAdapter for SteamLegitAdapter {
         let state = extract_state_mapping(&vdf);
         let schema = self.load_schema(app_id).await;
 
-        let mut baseline = self.baseline.write().await;
-        for ((stat, bit), earned_now) in state {
-            let api_name = schema
-                .get(&(stat, bit))
-                .cloned()
-                .unwrap_or_else(|| format!("steam_stat_{}_{}", stat, bit));
-            let key = (app_id, api_name.clone());
-            let was = baseline.get(&key).copied().unwrap_or(false);
-            if !was && earned_now {
-                let evt = RawUnlockEvent {
-                    app_id,
-                    ach_api_name: api_name,
-                    timestamp: 0,
-                    source: SourceKind::SteamLegit,
-                };
-                // CR-01 / BL-02: emit FIRST, then commit baseline only on send-success.
-                // If the receiver is dropped (channel closed / pipeline tearing down),
-                // skipping the baseline.insert leaves `was = false` for this key so a
-                // future on_file_changed event can re-fire the diff. Otherwise the
-                // unlock event is permanently lost. Mirrors goldberg.rs ordering.
-                if let Err(e) = tx.send(evt).await {
-                    tracing::error!(error = %e, "RawUnlockEvent receiver dropped; not committing baseline so retry can fire");
-                    continue;
+        // WR-01: Do not hold the baseline write-lock across `tx.send().await`. See
+        // matching comment in cream_api.rs. We classify each entry under the lock,
+        // commit baseline for non-emitting transitions immediately, buffer emitting
+        // ones, drop the lock, then drain. CR-01 preserved: on send failure we skip
+        // the baseline.insert for that key so a future event can re-fire.
+        let mut events_to_send: Vec<(RawUnlockEvent, (u64, String), bool)> = Vec::new();
+        {
+            let mut baseline = self.baseline.write().await;
+            for ((stat, bit), earned_now) in state {
+                let api_name = schema
+                    .get(&(stat, bit))
+                    .cloned()
+                    .unwrap_or_else(|| format!("steam_stat_{}_{}", stat, bit));
+                let key = (app_id, api_name.clone());
+                let was = baseline.get(&key).copied().unwrap_or(false);
+                if !was && earned_now {
+                    let evt = RawUnlockEvent {
+                        app_id,
+                        ach_api_name: api_name,
+                        timestamp: 0,
+                        source: SourceKind::SteamLegit,
+                    };
+                    events_to_send.push((evt, key, earned_now));
+                } else {
+                    baseline.insert(key, earned_now);
                 }
             }
-            baseline.insert(key, earned_now);
+        }
+        for (evt, key, earned_now) in events_to_send {
+            if let Err(e) = tx.send(evt).await {
+                tracing::error!(error = %e, "RawUnlockEvent receiver dropped; not committing baseline so retry can fire");
+                continue;
+            }
+            self.baseline.write().await.insert(key, earned_now);
         }
         // CR-02: hash was claimed atomically before parse/emit; no trailing insert needed.
         Ok(())

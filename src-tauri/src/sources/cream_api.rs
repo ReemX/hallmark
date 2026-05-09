@@ -245,28 +245,41 @@ impl SourceAdapter for CreamApiAdapter {
 
         let state = parse_creamapi_state(&text);
 
-        let mut baseline = self.baseline.write().await;
-        for (api_name, earned_now) in state {
-            let key = (app_id, api_name.clone());
-            let was = baseline.get(&key).copied().unwrap_or(false);
-            if !was && earned_now {
-                let evt = RawUnlockEvent {
-                    app_id,
-                    ach_api_name: api_name,
-                    timestamp: 0,
-                    source: SourceKind::CreamApi,
-                };
-                // CR-01 / BL-02: emit FIRST, then commit baseline only on send-success.
-                // If the receiver is dropped (channel closed / pipeline tearing down),
-                // skipping the baseline.insert leaves `was = false` for this key so a
-                // future on_file_changed event can re-fire the diff. Otherwise the
-                // unlock event is permanently lost. Mirrors goldberg.rs ordering.
-                if let Err(e) = tx.send(evt).await {
-                    tracing::error!(error = %e, "RawUnlockEvent receiver dropped; not committing baseline so retry can fire");
-                    continue;
+        // WR-01: Do not hold the baseline write-lock across `tx.send().await`. If the
+        // downstream channel fills (debounced burst, slow consumer), `send().await`
+        // blocks; holding the baseline lock for that duration starves any other task
+        // attempting to read or update the baseline (e.g. a parallel on_file_changed
+        // for a sibling app). Instead: under the lock, classify each entry — commit
+        // the baseline immediately for non-emitting transitions (already-true,
+        // false→false), and buffer the emitting ones. Then drop the lock, drain the
+        // buffer with `tx.send`, and re-acquire briefly per success to commit. CR-01
+        // is preserved: on send failure we skip the baseline.insert for that key so a
+        // future event can re-fire.
+        let mut events_to_send: Vec<(RawUnlockEvent, (u64, String), bool)> = Vec::new();
+        {
+            let mut baseline = self.baseline.write().await;
+            for (api_name, earned_now) in state {
+                let key = (app_id, api_name.clone());
+                let was = baseline.get(&key).copied().unwrap_or(false);
+                if !was && earned_now {
+                    let evt = RawUnlockEvent {
+                        app_id,
+                        ach_api_name: api_name,
+                        timestamp: 0,
+                        source: SourceKind::CreamApi,
+                    };
+                    events_to_send.push((evt, key, earned_now));
+                } else {
+                    baseline.insert(key, earned_now);
                 }
             }
-            baseline.insert(key, earned_now);
+        }
+        for (evt, key, earned_now) in events_to_send {
+            if let Err(e) = tx.send(evt).await {
+                tracing::error!(error = %e, "RawUnlockEvent receiver dropped; not committing baseline so retry can fire");
+                continue;
+            }
+            self.baseline.write().await.insert(key, earned_now);
         }
         // CR-02: hash was claimed atomically before parse/emit; no trailing insert needed.
         Ok(())

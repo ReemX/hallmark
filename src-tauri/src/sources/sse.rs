@@ -350,29 +350,43 @@ impl SourceAdapter for SseAdapter {
             }
         };
 
+        // WR-01: Do not hold the baseline write-lock across `tx.send().await`. See
+        // matching comment in cream_api.rs. We resolve api_names first (which take
+        // their own crc_reverse lock), then under the baseline lock classify each
+        // record — commit baseline for non-emitting transitions immediately, buffer
+        // emitting ones — drop the lock, then drain. CR-01 preserved: on send
+        // failure we skip the baseline.insert for that key so a future event can
+        // re-fire.
+        let mut resolved: Vec<(String, bool)> = Vec::with_capacity(records.len());
         for rec in records {
             let api_name = resolve_api_name(&self.crc_reverse, app_id, &rec.crc32_hex).await;
+            resolved.push((api_name, rec.achieved));
+        }
+        let mut events_to_send: Vec<(RawUnlockEvent, (u64, String), bool)> = Vec::new();
+        {
             let mut baseline = self.baseline.write().await;
-            let key = (app_id, api_name.clone());
-            let was = baseline.get(&key).copied().unwrap_or(false);
-            if !was && rec.achieved {
-                let evt = RawUnlockEvent {
-                    app_id,
-                    ach_api_name: api_name,
-                    timestamp: 0,
-                    source: SourceKind::SmartSteamEmu,
-                };
-                // CR-01 / BL-02: emit FIRST, then commit baseline only on send-success.
-                // If the receiver is dropped (channel closed / pipeline tearing down),
-                // skipping the baseline.insert leaves `was = false` for this key so a
-                // future on_file_changed event can re-fire the diff. Otherwise the
-                // unlock event is permanently lost. Mirrors goldberg.rs ordering.
-                if let Err(e) = tx.send(evt).await {
-                    tracing::error!(error = %e, "RawUnlockEvent receiver dropped; not committing baseline so retry can fire");
-                    continue;
+            for (api_name, achieved) in resolved {
+                let key = (app_id, api_name.clone());
+                let was = baseline.get(&key).copied().unwrap_or(false);
+                if !was && achieved {
+                    let evt = RawUnlockEvent {
+                        app_id,
+                        ach_api_name: api_name,
+                        timestamp: 0,
+                        source: SourceKind::SmartSteamEmu,
+                    };
+                    events_to_send.push((evt, key, achieved));
+                } else {
+                    baseline.insert(key, achieved);
                 }
             }
-            baseline.insert(key, rec.achieved);
+        }
+        for (evt, key, achieved) in events_to_send {
+            if let Err(e) = tx.send(evt).await {
+                tracing::error!(error = %e, "RawUnlockEvent receiver dropped; not committing baseline so retry can fire");
+                continue;
+            }
+            self.baseline.write().await.insert(key, achieved);
         }
         // CR-02: hash was claimed atomically before parse/emit; no trailing insert needed.
         Ok(())
