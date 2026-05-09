@@ -39,6 +39,8 @@ uuid                  = { version = "1.23", features = ["v4", "serde"] }
 rodio                 = { version = "0.22", features = ["wav"] }
 sysinfo               = "0.38"
 reqwest               = { version = "0.13", features = ["json", "rustls"], default-features = false }
+# Phase 4: auto-updater (DIST-02)
+tauri-plugin-updater  = "2.10"
 
 # Phase 3: binary VDF reader for legit Steam UserGameStats + SSE stats.bin
 byteorder             = "1.5"
