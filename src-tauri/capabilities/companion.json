@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "companion-capability",
-  "description": "Capability for the companion window. Receives game-started/game-stopped/schema-resolved events; can show/hide/move/resize itself; supports custom drag region for borderless chrome (D-13).",
+  "description": "Capability for the companion window. Receives game-started/game-stopped/schema-resolved events; can show/hide/move/resize itself; supports custom drag region for borderless chrome (D-13). Phase 4 gap closure 04-11: shell:allow-open scoped to two GitHub URLs for the UpdateModal release-notes link (UpdateModal renders inside companion per main-companion.tsx). Update this allowlist whenever a new external link is added to the companion window.",
   "windows": ["companion"],
   "permissions": [
     "core:default",
@@ -14,6 +14,13 @@
     "core:window:allow-start-dragging",
     "core:window:allow-close",
     "core:window:allow-minimize",
-    "updater:default"
+    "updater:default",
+    {
+      "identifier": "shell:allow-open",
+      "allow": [
+        { "url": "https://github.com/ReemX/hallmark" },
+        { "url": "https://github.com/ReemX/hallmark/releases/tag/*" }
+      ]
+    }
   ]
 }

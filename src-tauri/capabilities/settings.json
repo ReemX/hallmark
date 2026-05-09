@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "settings-capability",
-  "description": "Settings window — read-only paths panel, update check, about. Custom drag region.",
+  "description": "Settings window — read-only paths panel, update check, about. Custom drag region. Phase 4 gap closure 04-11: shell:allow-open scoped to two GitHub URLs (least-privilege per plan threat model T-04G-13). Update this allowlist whenever a new external link is added to the Settings window.",
   "windows": ["settings"],
   "permissions": [
     "core:default",
@@ -11,6 +11,13 @@
     "core:window:allow-hide",
     "core:window:allow-close",
     "core:window:allow-start-dragging",
-    "updater:default"
+    "updater:default",
+    {
+      "identifier": "shell:allow-open",
+      "allow": [
+        { "url": "https://github.com/ReemX/hallmark" },
+        { "url": "https://github.com/ReemX/hallmark/releases/tag/*" }
+      ]
+    }
   ]
 }
