@@ -722,37 +722,45 @@ That is the complete integration delta — `run_watcher`, `run_pipeline`, `Cross
 
 **Empirically VERIFIED (not assumed):** the 8 type tags observed in `UserGameStats_132274694_546560.bin` and `UserGameStatsSchema_546560.bin` (0x00, 0x01, 0x02, 0x08 directly observed; 0x03, 0x07 documented but not in this sample). The `cache → crc → PendingChanges → <stat_slot> → data` skeleton structure of the state file. The 166 real UserGameStats files in `<SteamPath>\appcache\stats` with mtimes ranging 2025-04-09 to 2026-05-03 (active use). The `appcache/stats/UserGameStatsSchema_*.bin` schema file presence (1:1 with state files for installed games). Phase 1's `CrossSourceDedup` keying.
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+*All questions resolved during planning + revision iteration 1 of Phase 3 (2026-05-09).*
 
 1. **DETECT-02 path discrepancy with REQUIREMENTS.md**
    - What we know: `appcache/stats/UserGameStats_*.bin` is the canonical achievement state path (empirical + canonical OSS).
    - What's unclear: Whether the ROADMAP author intended `userdata/<steamid>/<appid>/remote/` for a specific reason (e.g. cloud-saved screenshots, `vrachievements`, extension hooks).
    - Recommendation: Plan 03-00 spike (or `/gsd-discuss-phase` re-invocation) MUST clarify with user. Default action: implement against `appcache/stats` and propose a one-line REQUIREMENTS.md correction.
+   - **RESOLVED 2026-05-09:** Plan 03-00 Task 1 corrects REQUIREMENTS.md DETECT-02 to cite `appcache/stats/UserGameStats_<userid>_<appid>.bin`; empirical-vdf-NOTES.md captures the verification.
 
 2. **SSE 2nd format (`User\Achievements.ini`) — ship in v1 or defer?**
    - What we know: Achievement-Watcher uses `stats.bin`, Hydra discovery references `User\Achievements.ini`. SSE has at least 2 formats.
    - What's unclear: Real-world prevalence; is `stats.bin` enough to cover most modern SSE installs?
    - Recommendation: Ship `stats.bin` in v1. Log "found `User\Achievements.ini` but no `stats.bin`" as warn. Defer the INI variant to Phase 4 if user reports come in. Document in adapter's module-level `//!` block.
+   - **RESOLVED 2026-05-09:** Plan 03-03 ships `stats.bin` only; sse.rs `discover_paths` warns + skips on User\Achievements.ini-only directories with the explicit reference "RESEARCH.md Open Question #2".
 
 3. **Schema file fallback when `UserGameStatsSchema_<appid>.bin` is absent**
    - What we know: Phase 2 SchemaCache has a tolerant fallback. Pitfall #8 documents the placeholder pattern (`"steam_stat_7"`).
    - What's unclear: Whether the popup queue's tier-based animation (POPUP-06) produces a sensible visual when the API name is a placeholder.
    - Recommendation: Plan 03-01 verifies popup renders gracefully (default tier, no rarity badge, fallback display name). If broken, escalate as a Phase 2 hardening task.
+   - **RESOLVED 2026-05-09:** Plan 03-01 emits placeholder `steam_stat_<stat>_<bit>` ach_api_name when schema is missing; SC1 in Plan 03-04 asserts the placeholder is non-empty and well-formed (W-6 fix).
 
 4. **Multi-Steam-user disambiguation**
    - What we know: Multiple users on the same machine each have their own `UserGameStats_<userid>_*.bin`.
    - What's unclear: Should v1 silently filter to AutoLoginUser, or fire popups for ALL users with a "[username] unlocked X" prefix?
    - Recommendation: v1 silently filters to AutoLoginUser (single-user assumption matches PROJECT.md); multi-user handling is a Phase 4 polish task.
+   - **RESOLVED 2026-05-09:** Plan 03-01 reads HKCU\Software\Valve\Steam\Users for ALL user_ids (Pitfall #5 in code). Filename-encoded user_id is checked against this set; non-matching events are silently dropped at debug level. Multi-user UI display is Phase 4 polish.
 
 5. **CreamAPI fixture availability**
    - What we know: No CreamAPI install on dev machine — directory does not exist.
    - What's unclear: Whether the project owner has a known game with CreamAPI installed elsewhere that can be used as a fixture.
    - Recommendation: Plan 03-02 (CreamAPI adapter) constructs synthetic test fixtures matching the Hydra-confirmed schema; integration tests use synthetic. Production validation deferred to user testing.
+   - **RESOLVED 2026-05-09:** Plan 03-02 ships synthetic CreamAPI fixtures + `HALLMARK_CREAMAPI_ROOT_OVERRIDE` env var (B-2 fix) for SC2 / sc3_supplement integration tests against fixture trees.
 
 6. **SSE fixture availability**
    - What we know: No SSE install on dev machine.
    - What's unclear: Whether anyone in the project has access to an SSE install for empirical schema confirmation.
    - Recommendation: Plan 03-03 ships with synthetic stats.bin fixtures; production validation deferred to user reports.
+   - **RESOLVED 2026-05-09:** Plan 03-03 ships synthetic SSE stats.bin fixtures + `HALLMARK_SSE_ROOT_OVERRIDE` env var (B-2 fix) for SC2 / sc3_supplement integration tests.
 
 ## Environment Availability
 

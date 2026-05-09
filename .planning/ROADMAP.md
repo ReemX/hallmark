@@ -66,7 +66,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. Unlocking an achievement in a legitimate Steam game (with Steam client running) fires a Hallmark popup within one second, identical in quality to a Goldberg unlock, with no manual path configuration required.
   2. CreamAPI and SmartSteamEmu installs are detected automatically by path discovery and their unlocks fire the same premium popup.
   3. When a legitimate Steam game is also running a Goldberg or CreamAPI emulator alongside it (unusual but real-world), exactly one popup fires per logical unlock — not two or three.
-**Plans**: TBD
+**Plans**: 5 plans
+  - [ ] 03-00-PLAN.md — Spike: confirm appcache/stats path empirically, fix REQUIREMENTS.md DETECT-02, write empirical-vdf-NOTES.md, add Cargo deps (byteorder + crc32fast), extend SourceKind enum + DiscoveredPaths struct, declare 4 stub source modules
+  - [ ] 03-01-PLAN.md — SteamLegit adapter + hand-rolled binary VDF reader (vdf_binary.rs) + path-discovery extension reading HKCU registry user IDs (DETECT-02)
+  - [ ] 03-02-PLAN.md — CreamAPI adapter + 12-LoC INI parser + path-discovery extension enumerating %APPDATA%/CreamAPI/<appid>/ (DETECT-03)
+  - [ ] 03-03-PLAN.md — SmartSteamEmu adapter (stats.bin variant) + 24-byte record parser + lazy CRC32 to API-name reverse lookup + path-discovery extension (DETECT-04)
+  - [ ] 03-04-PLAN.md — Wire 4 adapters in lib.rs::run(), integration tests for all 3 ROADMAP success criteria including 3-source dedup verification
 
 ### Phase 4: Polish & Distribution
 **Goal**: Any user can install Hallmark from a GitHub Release via a double-click NSIS installer or a portable zip, verify their installation fires a popup immediately via the test trigger, opt into start-with-Windows, receive in-app update prompts, and be guided through path discovery on first run — making the public release genuinely usable without a README deep-dive.
@@ -89,5 +94,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Detection Pipeline Foundation | 5/5 | Complete | 2026-05-08 |
 | 2. Premium UI — Popup, Companion & Game Session | 7/7 | Complete   | 2026-05-08 |
-| 3. Remaining Source Adapters | 0/TBD | Not started | - |
+| 3. Remaining Source Adapters | 0/5 | Not started | - |
 | 4. Polish & Distribution | 0/TBD | Not started | - |
