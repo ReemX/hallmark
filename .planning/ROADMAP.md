@@ -13,8 +13,10 @@ Hallmark ships in four coarse phases. Phase 1 lays the load-bearing detection pi
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Detection Pipeline Foundation** - Watcher core, Goldberg adapter, first-launch seeding, path discovery, SQLite store (completed 2026-05-08)
-- [x] **Phase 2: Premium UI — Popup, Companion & Game Session** - Popup overlay with signature sound, companion window, game-session detection, schema/icon resolution (completed 2026-05-08)
-- [x] **Phase 3: Remaining Source Adapters** - Steam-legit binary VDF adapter, CreamAPI adapter, SmartSteamEmu adapter, cross-source dedup (completed 2026-05-09)
+- [x] **Phase 2: Premium UI — Popup, Companion & Game Session** - Popup overlay with signature sound, companion window, game-session detection, schema/icon resolution
+ (completed 2026-05-08)
+- [x] **Phase 3: Remaining Source Adapters** - Steam-legit binary VDF adapter, CreamAPI adapter, SmartSteamEmu adapter, cross-source dedup
+ (completed 2026-05-09)
 - [ ] **Phase 4: Polish & Distribution** - Test popup trigger, start-with-Windows, NSIS installer, auto-updater, GitHub Actions release pipeline, first-run wizard
 
 ## Phase Details
@@ -83,7 +85,15 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. A GitHub Release tag push triggers a GitHub Actions workflow that produces both an NSIS installer `.exe` and a portable `.zip`, attaches them to the release, and publishes `latest.json` for the auto-updater.
   4. When a newer version is available on GitHub Releases, Hallmark prompts the user to install the update in-app via `tauri-plugin-updater`; the update installs and restarts without requiring manual download.
   5. On first launch, the path-discovery wizard scans for Steam library folders and Goldberg/CreamAPI/SmartSteamEmu installations and presents what was found (or not found), so users with zero detected paths see an immediate actionable message rather than silent failure.
-**Plans**: TBD
+**Plans**: 8 plans
+  - [ ] 04-01a-PLAN.md — Foundation A: deps + Vite multi-entry + capabilities + 7 module stubs + queries.rs first_run helpers + types.ts extension
+  - [ ] 04-01b-PLAN.md — Foundation B: tauri.conf.json bundle + CSP + lib.rs setup() spine + AppState extension + 4 commands + plugin registration
+  - [ ] 04-02-PLAN.md — Tray icon + autostart (HKCU\Run via winreg) + Quit-with-drain (POL-02 surface)
+  - [ ] 04-03-PLAN.md — Test-popup synthetic injector + portable mode detector (POL-01)
+  - [ ] 04-04-PLAN.md — Settings window + Updater background-check + Update modal in companion (DIST-02)
+  - [ ] 04-05-PLAN.md — First-run wizard window (DIST-04)
+  - [ ] 04-06-PLAN.md — GitHub Actions release pipeline + portable .zip + Ed25519 keypair generation + README polish (DIST-01, DIST-03)
+  - [ ] 04-07-PLAN.md — Final SFX assets (procedural via gen_placeholder_sfx.rs retune)
 
 ## Progress
 
@@ -95,4 +105,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Detection Pipeline Foundation | 5/5 | Complete | 2026-05-08 |
 | 2. Premium UI — Popup, Companion & Game Session | 7/7 | Complete   | 2026-05-08 |
 | 3. Remaining Source Adapters | 5/5 | Complete   | 2026-05-09 |
-| 4. Polish & Distribution | 0/TBD | Not started | - |
+| 4. Polish & Distribution | 0/8 | Not started | - |
