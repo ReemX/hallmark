@@ -58,6 +58,32 @@ pub fn decide_action(event_received: bool, celebration_pending: bool, channel_id
     DrainAction::Idle
 }
 
+/// If the given api_name is a synthetic test-popup event (timestamped variant
+/// produced by `test_trigger::fire`, OR the stable seed key under which the
+/// schema_cache fixture row is stored), return the canonical UI-SPEC fixture
+/// copy. Otherwise None — caller falls through to schema resolution.
+///
+/// Why this exists: per UAT test 4 root-cause #1 fix (Phase 04 gap-closure),
+/// `fire()` now timestamps each synthetic api_name to escape the SQLite
+/// UNIQUE INDEX `idx_unlock_dedup`. The schema_cache row is seeded under the
+/// prefix-only stable key, so the timestamped variants intentionally MISS
+/// the cache. This helper renders the canonical "Test Achievement" /
+/// "Hallmark is working correctly..." pair so the user-visible popup
+/// matches the locked UI-SPEC § Test popup fixture copy contract.
+///
+/// Pure function — split out for unit testing without Tauri.
+fn synthetic_test_display(api_name: &str) -> Option<(&'static str, &'static str)> {
+    const TITLE: &str = "Test Achievement";
+    const DESC: &str = "Hallmark is working correctly on your system.";
+    if api_name.starts_with(crate::test_trigger::TEST_API_NAME_PREFIX)
+        || api_name == crate::test_trigger::TEST_FIXTURE_SEED_KEY
+    {
+        Some((TITLE, DESC))
+    } else {
+        None
+    }
+}
+
 /// Spawn the drain task. Single consumer of `sink_rx`.
 /// `current_pid` is updated by Plan 07's listener on each `game-started` event
 /// (which carries pid per Plan 03's B-1 fix); popup_queue reads it on each fire
@@ -131,12 +157,22 @@ async fn process_event(
 
     // ----- Enrich + tier -----
     let enriched = schema.lookup(evt.app_id, &evt.ach_api_name);
-    let display_name = enriched.as_ref()
-        .and_then(|s| s.display_name.clone())
-        .unwrap_or_else(|| evt.ach_api_name.clone()); // D-26 fallback
-    let description = enriched.as_ref()
-        .and_then(|s| s.description.clone())
-        .unwrap_or_default();
+    let (display_name, description) = if let Some((t, d)) = synthetic_test_display(&evt.ach_api_name) {
+        // Synthetic test popup — bypass the schema_cache miss caused by the
+        // per-call timestamped api_name. The seed row is keyed by the
+        // prefix-stripped stable seed key (TEST_FIXTURE_SEED_KEY); the
+        // timestamped variants intentionally miss. UI-SPEC § Test popup
+        // fixture copy contract — render the canonical pair.
+        (t.to_string(), d.to_string())
+    } else {
+        let dn = enriched.as_ref()
+            .and_then(|s| s.display_name.clone())
+            .unwrap_or_else(|| evt.ach_api_name.clone()); // D-26 fallback
+        let desc = enriched.as_ref()
+            .and_then(|s| s.description.clone())
+            .unwrap_or_default();
+        (dn, desc)
+    };
     let icon_path = enriched.as_ref().and_then(|s| s.icon_path.clone());
     let global_pct = enriched.as_ref().and_then(|s| s.global_pct);
     let tier_str = classify_tier(global_pct);
@@ -307,6 +343,33 @@ mod tests {
         let enriched_display: Option<String> = None;
         let display = enriched_display.unwrap_or_else(|| ach_api_name.to_string());
         assert_eq!(display, "ACH_FIRST_BLOOD");
+    }
+
+    #[test]
+    fn synthetic_test_display_matches_timestamped_variant() {
+        let api_name = format!("{}1715281920", crate::test_trigger::TEST_API_NAME_PREFIX);
+        let result = synthetic_test_display(&api_name);
+        assert_eq!(
+            result,
+            Some(("Test Achievement", "Hallmark is working correctly on your system."))
+        );
+    }
+
+    #[test]
+    fn synthetic_test_display_matches_stable_seed_key() {
+        let result = synthetic_test_display(crate::test_trigger::TEST_FIXTURE_SEED_KEY);
+        assert_eq!(
+            result,
+            Some(("Test Achievement", "Hallmark is working correctly on your system."))
+        );
+    }
+
+    #[test]
+    fn synthetic_test_display_returns_none_for_real_achievements() {
+        assert_eq!(synthetic_test_display("ACH_REAL_SPACEWAR"), None);
+        assert_eq!(synthetic_test_display(""), None);
+        // Defensive: a name that contains the prefix mid-string is NOT synthetic.
+        assert_eq!(synthetic_test_display("PREFIXED_HALLMARK_TEST_UNLOCK_123"), None);
     }
 
     #[test]
