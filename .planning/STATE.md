@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Completed 02-04-PLAN.md
-last_updated: "2026-05-08T23:24:54.403Z"
-last_activity: 2026-05-08 -- Phase 02 marked complete
+status: executing
+stopped_at: Completed 03-00-PLAN.md
+last_updated: "2026-05-09T08:54:25.754Z"
+last_activity: 2026-05-09
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 12
-  completed_plans: 13
-  percent: 100
+  total_plans: 17
+  completed_plans: 14
+  percent: 82
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-07)
 
 **Core value:** Make PC achievement unlocks feel as satisfying as a PS5 trophy ding — every time, in every supported game.
-**Current focus:** Phase 02 — Premium UI — Popup, Companion & Game Session
+**Current focus:** Phase 03 — Remaining Source Adapters
 
 ## Current Position
 
-Phase: 02 — COMPLETE
-Plan: 7 of 7
-Status: Phase 02 complete
-Last activity: 2026-05-08 -- Phase 02 marked complete
+Phase: 03 (Remaining Source Adapters) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-05-09
 
-Progress: [██████████] 100%
+Progress: [████████░░] 82%
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [██████████] 100%
 | Phase 02-premium-ui-popup-companion-game-session P04 | 15 | 2 tasks | 7 files |
 | Phase 02-premium-ui-popup-companion-game-session P05 | 25 | 3 tasks | 5 files |
 | Phase 02-premium-ui-popup-companion-game-session P06 | 4 | 2 tasks | 12 files |
+| Phase 03 P00 | 12 | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,10 @@ Recent decisions affecting current work:
 - [Phase ?]: Every received event flows through process_event without exception
 - [Phase ?]: 100% celebration always appended-last (D-12) — idle 50ms timeout fires only when channel is quiet
 - [Phase ?]: 5s hold chosen at Claude discretion; CONTEXT.md defers specifics to design iteration
+- [Phase ?]: Plan 03-00: REQUIREMENTS.md DETECT-02 corrected — achievement state lives at appcache/stats/UserGameStats_<userid>_<appid>.bin, NOT userdata/<steamid>/<appid>/remote/ (Steam Cloud save data)
+- [Phase ?]: Plan 03-00: SourceKind::SmartSteamEmu.as_str() = 'smartsteamemu' (single token, no separator) — stable for SQLite TEXT column
+- [Phase ?]: Plan 03-00: Stub-first declaration of vdf_binary.rs at module scope (not nested under steam_legit) — keeps binary KV reader reusable for future SSE schema needs
+- [Phase ?]: Plan 03-00: DiscoveredPaths struct literals in tests use ..Default::default() — minimum-surface change as new fields are appended
 
 ### Pending Todos
 
@@ -126,6 +131,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-08T11:40:56.035Z
-Stopped at: Completed 02-04-PLAN.md
+Last session: 2026-05-09T08:54:25.744Z
+Stopped at: Completed 03-00-PLAN.md
 Resume file: None

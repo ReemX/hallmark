@@ -67,7 +67,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. CreamAPI and SmartSteamEmu installs are detected automatically by path discovery and their unlocks fire the same premium popup.
   3. When a legitimate Steam game is also running a Goldberg or CreamAPI emulator alongside it (unusual but real-world), exactly one popup fires per logical unlock — not two or three.
 **Plans**: 5 plans
-  - [ ] 03-00-PLAN.md — Spike: confirm appcache/stats path empirically, fix REQUIREMENTS.md DETECT-02, write empirical-vdf-NOTES.md, add Cargo deps (byteorder + crc32fast), extend SourceKind enum + DiscoveredPaths struct, declare 4 stub source modules
+  - [x] 03-00-PLAN.md — Spike: confirm appcache/stats path empirically, fix REQUIREMENTS.md DETECT-02, write empirical-vdf-NOTES.md, add Cargo deps (byteorder + crc32fast), extend SourceKind enum + DiscoveredPaths struct, declare 4 stub source modules
   - [ ] 03-01-PLAN.md — SteamLegit adapter + hand-rolled binary VDF reader (vdf_binary.rs) + path-discovery extension reading HKCU registry user IDs (DETECT-02)
   - [ ] 03-02-PLAN.md — CreamAPI adapter + 12-LoC INI parser + path-discovery extension enumerating %APPDATA%/CreamAPI/<appid>/ (DETECT-03)
   - [ ] 03-03-PLAN.md — SmartSteamEmu adapter (stats.bin variant) + 24-byte record parser + lazy CRC32 to API-name reverse lookup + path-discovery extension (DETECT-04)
