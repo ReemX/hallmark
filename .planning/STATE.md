@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-05-09T12:31:42.502Z"
-last_activity: 2026-05-09 -- Phase 04 planning complete
+last_updated: "2026-05-09T13:43:32.524Z"
+last_activity: 2026-05-09 -- Phase 04 execution started
 progress:
   total_phases: 4
   completed_phases: 3
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-07)
 
 **Core value:** Make PC achievement unlocks feel as satisfying as a PS5 trophy ding — every time, in every supported game.
-**Current focus:** Phase 03 — Remaining Source Adapters
+**Current focus:** Phase 04 — polish-distribution
 
 ## Current Position
 
-Phase: 03 (Remaining Source Adapters) — EXECUTING
-Plan: 5 of 5
-Status: Ready to execute
-Last activity: 2026-05-09 -- Phase 04 planning complete
+Phase: 04 (polish-distribution) — EXECUTING
+Plan: 1 of 8
+Status: Executing Phase 04
+Last activity: 2026-05-09 -- Phase 04 execution started
 
 Progress: [██████████] 100%
 
