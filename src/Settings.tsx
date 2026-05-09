@@ -120,7 +120,7 @@ function SettingsRoot() {
   return (
     <div className="settings-shell">
       <div className="settings-header" data-tauri-drag-region>
-        <span className="settings-title">Settings</span>
+        <span className="settings-title" data-tauri-drag-region>Settings</span>
         <button
           className="settings-close"
           onClick={handleClose}
