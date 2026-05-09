@@ -152,22 +152,29 @@ impl SourceAdapter for MockAdapter {
 }
 
 // ============================================================================
-// SC1: Steam-legit unlock fires within one second (REQ DETECT-02 + ROADMAP SC#1)
+// SC1: Steam-legit unlock emits event synchronously (REQ DETECT-02)
 // ============================================================================
 
-/// SC1 — Steam-legit unlock fires popup within 1s (REQ DETECT-02 + ROADMAP SC#1).
+/// SC1 — Steam-legit DETECT-02 smoke test.
 ///
-/// Per B-1 fix: this test calls `adapter.on_file_changed(state_path, &tx).await`
-/// DIRECTLY rather than relying on `notify-debouncer-full` to detect a write. The
-/// reason is RESEARCH.md Pitfall #6 (and the original spawn_pipeline-with-400ms-sleep
-/// pattern's race condition): there is a real risk the debouncer has not finished
-/// attaching to the watch path during the brief seed→attach gap, which would silently
-/// drop the test's second write. notify-debouncer-full integration is already covered
-/// by Phase 1's `watcher_core` integration tests + the SC3 test below; this test
-/// proves DETECT-02 (binary VDF parse + state diff + RawUnlockEvent emission with
-/// SourceKind::SteamLegit) which is the actual ROADMAP SC#1 requirement.
+/// WR-05: this test was previously named
+/// `sc1_steam_legit_unlock_fires_within_one_second` and asserted
+/// `elapsed < 1s` around a synchronous `on_file_changed` call. That was misleading:
+/// the real-world ROADMAP SC#1 (steam-legit unlock fires popup within 1s) covers
+/// debounce window + dispatch + dedup + popup-render — none of which this test
+/// exercises. The synchronous direct-call path here returns in single-digit
+/// milliseconds regardless of whether the production pipeline meets the 1s SLA.
+/// Renamed to reflect its actual scope (DETECT-02 emission shape) and the latency
+/// assertion is dropped. The full-pipeline SC#1 latency is implicitly covered by
+/// SC3 / SC3-supplement (which DO run through the debouncer + dedup + sink).
+///
+/// Per B-1 fix rationale (still applicable): this test calls
+/// `adapter.on_file_changed(state_path, tx).await` DIRECTLY rather than relying on
+/// `notify-debouncer-full`. The debouncer attach race during the brief seed→attach
+/// gap can silently drop a write; notify-debouncer-full integration is already
+/// covered by Phase 1's `watcher_core` integration tests + the SC3 test below.
 #[tokio::test]
-async fn sc1_steam_legit_unlock_fires_within_one_second() {
+async fn sc1_steam_legit_emits_event_synchronously() {
     let appcache_stats = fresh_tmp("steamlegit-sc1");
 
     let app_id: u64 = 999991;
@@ -202,23 +209,18 @@ async fn sc1_steam_legit_unlock_fires_within_one_second() {
     // Flip to earned. Direct on_file_changed call — no debouncer in the path.
     std::fs::write(&state_path, synth_state(true)).unwrap();
     let (tx, mut rx) = mpsc::channel::<RawUnlockEvent>(8);
-    let t0 = std::time::Instant::now();
     adapter
         .on_file_changed(state_path.clone(), tx)
         .await
         .expect("on_file_changed must succeed");
-    let elapsed = t0.elapsed();
 
     // Event must arrive (we just sent it on the same task; recv() is immediate).
-    let evt = timeout(Duration::from_millis(1000), rx.recv())
+    // Generous 2s timeout — this is a synchronous-emission shape check, NOT a
+    // latency assertion (see WR-05 rationale on the function header).
+    let evt = timeout(Duration::from_secs(2), rx.recv())
         .await
-        .expect("event must arrive within 1s (ROADMAP SC#1)")
+        .expect("event must arrive (DETECT-02 emission shape)")
         .expect("event must not be None");
-    assert!(
-        elapsed < Duration::from_secs(1),
-        "DETECT-02 emission must complete in <1s; took {:?}",
-        elapsed
-    );
     assert_eq!(evt.app_id, app_id);
     assert_eq!(evt.source, SourceKind::SteamLegit);
     // W-6: strengthen DETECT-02 verification by asserting ach_api_name shape.
