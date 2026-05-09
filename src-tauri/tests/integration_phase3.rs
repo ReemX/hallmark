@@ -8,14 +8,37 @@
 //! Plus:
 //!   sc3_supplement_real_three_source_endtoend — same dedup property with REAL adapters (B-3 fix).
 //!   sc4_lib_run_constructs_all_four_adapters — proves the production lib.rs adapter Vec has 4 entries.
+//!
+//! # WR-03: serialise tests that mutate shared env vars
+//!
+//! Cargo runs `#[tokio::test]` functions inside the same integration-test binary in
+//! parallel by default (controlled by `RUST_TEST_THREADS`, default = num CPUs). Both
+//! `sc2_cream_api_and_sse_paths_auto_discovered` and
+//! `sc3_supplement_real_three_source_endtoend` mutate `HALLMARK_CREAMAPI_ROOT_OVERRIDE`
+//! and `HALLMARK_SSE_ROOT_OVERRIDE` to *different* fixture trees via `EnvGuard`. Without
+//! serialisation, two tests can interleave their guard set/restore — one test would
+//! either read the other's fixture root or have its env var cleared mid-test, producing
+//! sporadic CI flakes. Tests below acquire `env_override_lock()` for the duration of any
+//! work that depends on `HALLMARK_*_OVERRIDE`. Using a module-local std::sync::Mutex
+//! avoids the extra `serial_test` crate dependency for a 2-test serialisation need.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use tokio::sync::mpsc;
 use tokio::time::timeout;
+
+/// Process-global mutex held by any test that mutates HALLMARK_*_OVERRIDE env vars.
+/// We ignore poisoning (test panics are normal) by using `lock().unwrap_or_else(|p| p.into_inner())`
+/// at call sites, and keep the guard alive for the entire test body. Tests must hold this
+/// lock BEFORE constructing any `EnvGuard` so concurrent tests can't observe interleaved
+/// state.
+fn env_override_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
 
 use hallmark_lib::sources::cream_api::CreamApiAdapter;
 use hallmark_lib::sources::sse::SseAdapter;
@@ -268,6 +291,13 @@ impl Drop for EnvGuard {
 /// the correct appid directory.
 #[tokio::test]
 async fn sc2_cream_api_and_sse_paths_auto_discovered() {
+    // WR-03: serialise with sc3_supplement_real_three_source_endtoend — both
+    // tests mutate HALLMARK_CREAMAPI_ROOT_OVERRIDE / HALLMARK_SSE_ROOT_OVERRIDE.
+    // Hold this lock across the entire test body (drops at function exit).
+    let _env_lock = env_override_lock()
+        .lock()
+        .unwrap_or_else(|p| p.into_inner());
+
     let cream_root = fresh_tmp("sc2-cream-root");
     let sse_root = fresh_tmp("sc2-sse-root");
     let db_dir = fresh_tmp("sc2-db");
@@ -503,6 +533,13 @@ async fn sc3_three_source_simultaneous_unlock_collapses_to_one_popup() {
 /// downstream event.
 #[tokio::test]
 async fn sc3_supplement_real_three_source_endtoend() {
+    // WR-03: serialise with sc2_cream_api_and_sse_paths_auto_discovered — both
+    // tests mutate HALLMARK_CREAMAPI_ROOT_OVERRIDE / HALLMARK_SSE_ROOT_OVERRIDE.
+    // Hold this lock across the entire test body (drops at function exit).
+    let _env_lock = env_override_lock()
+        .lock()
+        .unwrap_or_else(|p| p.into_inner());
+
     let appcache_stats = fresh_tmp("sc3sup-steamlegit");
     let cream_root = fresh_tmp("sc3sup-cream-root");
     let sse_root = fresh_tmp("sc3sup-sse-root");
