@@ -192,13 +192,32 @@ pub fn run() {
             let goldberg_paths = paths::goldberg_watch_paths(&discovery);
             let goldberg_map = paths::goldberg_redirect_map(&discovery);
 
-            // ----- 5. Build adapter list -----
+            // ----- 5. Build adapter list (Phase 3: 4 adapters) -----
             let goldberg_adapter: std::sync::Arc<dyn sources::SourceAdapter> =
                 std::sync::Arc::new(sources::goldberg::GoldbergAdapter::new(
                     goldberg_paths.clone(),
                     goldberg_map.clone(),
                 ));
-            let adapters = vec![goldberg_adapter];
+            let steam_legit_adapter: std::sync::Arc<dyn sources::SourceAdapter> =
+                std::sync::Arc::new(sources::steam_legit::SteamLegitAdapter::new(
+                    discovery.steam_legit_appcache_stats.clone(),
+                    discovery.steam_legit_user_ids.clone(),
+                ));
+            let cream_api_adapter: std::sync::Arc<dyn sources::SourceAdapter> =
+                std::sync::Arc::new(sources::cream_api::CreamApiAdapter::new(
+                    discovery.cream_api_appid_dirs.clone(),
+                ));
+            let sse_adapter: std::sync::Arc<dyn sources::SourceAdapter> =
+                std::sync::Arc::new(sources::sse::SseAdapter::new(
+                    discovery.sse_appid_dirs.clone(),
+                ));
+            let adapters = vec![
+                goldberg_adapter,
+                steam_legit_adapter,
+                cream_api_adapter,
+                sse_adapter,
+            ];
+            tracing::info!(adapter_count = adapters.len(), "Phase 3: 4-adapter pipeline configured");
 
             // ----- 6. Channels (cli mirrors this topology) -----
             let (raw_tx, raw_rx) = tokio::sync::mpsc::channel::<sources::RawUnlockEvent>(64);
