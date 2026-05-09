@@ -726,45 +726,51 @@ async fn sc3_supplement_real_three_source_endtoend() {
         SourceKind::SteamLegit | SourceKind::CreamApi | SourceKind::SmartSteamEmu
     ));
 
-    // No further events for the same (app_id, ach_api_name) within 3s — dedup MUST collapse
-    // the other two real-adapter emits.
+    // WR-04: count ALL events for app_id (NOT filtered by ach_api_name). The previous
+    // filter `evt.ach_api_name == first.ach_api_name` silently absorbed dedup leaks
+    // when one adapter resolved the ach_api_name to a different form (e.g. SSE
+    // falling back to `<crc:0x...>` because the goldberg companion couldn't be
+    // written). Such an event would slip through CrossSourceDedup (different key),
+    // get persisted to SQLite (different row), and yet not count as a leak under the
+    // old filter. The headline B-3 invariant is "3 real adapters → 1 event for this
+    // app_id" — count accordingly.
     let mut extras: Vec<RawUnlockEvent> = Vec::new();
     let drain_deadline = std::time::Instant::now() + Duration::from_secs(3);
     while std::time::Instant::now() < drain_deadline {
         let remaining = drain_deadline.saturating_duration_since(std::time::Instant::now());
         match timeout(remaining, sink_rx.recv()).await {
-            Ok(Some(evt)) => {
-                if evt.app_id == app_id && evt.ach_api_name == first.ach_api_name {
-                    extras.push(evt);
-                }
-                // Other (app_id, ach_api_name) pairs (e.g. SteamLegit's placeholder + CreamAPI's real name)
-                // are NOT duplicates of `first`; they would indicate ach_api_name resolution mismatch.
-                // We collect them as a diagnostic.
-            }
+            Ok(Some(evt)) if evt.app_id == app_id => extras.push(evt),
             _ => break,
         }
     }
     assert_eq!(
         extras.len(),
         0,
-        "B-3: expected dedup to collapse the other two real-adapter emits for ({}, {}); got {} extras",
+        "B-3 / WR-04: dedup must collapse all three real-adapter emits for app_id {} to a single event; got {} extras: {:?}",
         app_id,
-        first.ach_api_name,
-        extras.len()
+        extras.len(),
+        extras
     );
 
-    // Belt-and-suspenders: SQLite UNIQUE INDEX must also have exactly 1 row.
+    // Belt-and-suspenders: SQLite UNIQUE INDEX must also have exactly 1 row for the app_id.
+    // WR-04: filter by app_id only, NOT by ach_api_name — same rationale as the event-count
+    // assertion above. A leaked event with a different ach_api_name would land as a separate
+    // row in unlock_history; this assertion catches it.
     let row_count: i64 = store
         .with_conn(|c| {
             let n: i64 = c.query_row(
-                "SELECT COUNT(*) FROM unlock_history WHERE app_id = ?1 AND ach_api_name = ?2",
-                rusqlite::params![app_id as i64, first.ach_api_name.as_str()],
+                "SELECT COUNT(*) FROM unlock_history WHERE app_id = ?1",
+                rusqlite::params![app_id as i64],
                 |r| r.get(0),
             )?;
             Ok(n)
         })
         .unwrap();
-    assert_eq!(row_count, 1, "B-3: exactly 1 unlock_history row expected");
+    assert_eq!(
+        row_count, 1,
+        "B-3 / WR-04: exactly 1 unlock_history row expected for app_id {}",
+        app_id
+    );
 
     watcher_handle.abort();
     pipeline_handle.abort();
