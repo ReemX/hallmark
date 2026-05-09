@@ -24,10 +24,8 @@ The Phase 1–3 detection pipeline is locked. Phase 4 does NOT modify watcher co
 ## Implementation Decisions
 
 ### Tray icon and menu (POL-01, POL-02 surface)
-- **D-01 Tray menu structure (locked):**
+- **D-01 Tray menu structure (locked, amended 2026-05-09 — see SUPERSEDED note):**
   ```
-  Hallmark
-  ─────────────
   Show companion
   Fire test popup
   ─────────────
@@ -37,6 +35,16 @@ The Phase 1–3 detection pipeline is locked. Phase 4 does NOT modify watcher co
   Quit
   ```
   Inline checkable "Start with Windows" item. "Settings…" opens a separate Settings window. Tray is the primary surface for both POL-01 + POL-02.
+
+  **[SUPERSEDED 2026-05-09 — gap closure 04-13a]** Original D-01 included a
+  non-clickable "Hallmark" header item at the top with a separator below
+  it. Phase 4 UAT test 2 (2026-05-09) flagged the header as inconsistent
+  with the Discord/Slack/Steam tray-utility convention (none of those
+  ship a header item). User picked the no-header layout above; the
+  `tooltip("Hallmark")` on the tray icon already provides app
+  identification on hover. tray.rs implements the amended layout; the
+  diagnosis ([.planning/debug/tray-menu-extra-header-and-black-icon.md](../../debug/tray-menu-extra-header-and-black-icon.md))
+  records the spec contradiction and the resolution.
 - **D-02 Tray icon presence:** Always-on-top tray icon (system notification area) with Hallmark monochrome glyph. Right-click → menu above. Left-click on icon = same as "Show companion" menu item.
 - **D-03 Quit semantics:** `Quit` cleanly closes all windows, drains popup queue with timeout, joins tokio tasks, releases watcher handles. The X button on companion does NOT quit — it hides (existing Phase 2 behavior). Quit is tray-only.
 
