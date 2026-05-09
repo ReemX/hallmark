@@ -6,7 +6,7 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 // <a target="_blank"> default-browser navigation.
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { SettingsSourceRow } from "./components/SettingsSourceRow";
-import type { DiscoveredPathsView, UpdateInfo } from "./types";
+import type { DiscoveredPathsView, UpdateInfo, CheckOutcome } from "./types";
 
 interface DiscoveredPathsRust {
   steam_install: string | null;
@@ -60,7 +60,10 @@ type UpdateState =
   | { kind: "checking" }
   | { kind: "uptodate"; lastChecked: number }
   | { kind: "available"; info: UpdateInfo }
-  | { kind: "error"; message: string };
+  | { kind: "no_release"; lastChecked: number }
+  | { kind: "offline"; detail: string }
+  | { kind: "platform_missing"; detail: string }
+  | { kind: "other_error"; detail: string };
 
 function SettingsRoot() {
   const [view, setView] = useState<DiscoveredPathsView | null>(null);
@@ -97,14 +100,34 @@ function SettingsRoot() {
   const handleCheckUpdates = useCallback(async () => {
     setUpdateState({ kind: "checking" });
     try {
-      const result = await invoke<UpdateInfo | null>("manual_check_update");
-      if (result) {
-        setUpdateState({ kind: "available", info: result });
-      } else {
-        setUpdateState({ kind: "uptodate", lastChecked: Math.floor(Date.now() / 1000) });
+      const result = await invoke<CheckOutcome>("manual_check_update");
+      const now = Math.floor(Date.now() / 1000);
+      switch (result.status) {
+        case "available":
+          setUpdateState({
+            kind: "available",
+            info: { version: result.version, notes: result.notes },
+          });
+          break;
+        case "up_to_date":
+          setUpdateState({ kind: "uptodate", lastChecked: now });
+          break;
+        case "no_release_yet":
+          setUpdateState({ kind: "no_release", lastChecked: now });
+          break;
+        case "offline":
+          setUpdateState({ kind: "offline", detail: result.detail });
+          break;
+        case "platform_missing":
+          setUpdateState({ kind: "platform_missing", detail: result.detail });
+          break;
+        case "other_error":
+          setUpdateState({ kind: "other_error", detail: result.detail });
+          break;
       }
     } catch (e) {
-      setUpdateState({ kind: "error", message: String(e) });
+      // Outer Err — manual_check returned Result::Err, e.g. updater plugin missing.
+      setUpdateState({ kind: "other_error", detail: String(e) });
     }
   }, []);
 
@@ -112,7 +135,7 @@ function SettingsRoot() {
     try {
       await invoke("install_pending_update");
     } catch (e) {
-      setUpdateState({ kind: "error", message: String(e) });
+      setUpdateState({ kind: "other_error", detail: String(e) });
     }
   }, []);
 
@@ -176,6 +199,14 @@ function SettingsRoot() {
               <p className="settings-meta">Last checked: {relativeTime(updateState.lastChecked)}</p>
             </>
           )}
+          {updateState.kind === "no_release" && (
+            <>
+              <p className="settings-status">
+                No releases yet — Hallmark is on its first version. We&apos;ll show new versions here when they arrive.
+              </p>
+              <p className="settings-meta">Last checked: {relativeTime(updateState.lastChecked)}</p>
+            </>
+          )}
           {updateState.kind === "available" && (
             <p className="settings-status">
               Version <span className="settings-accent">{updateState.info.version}</span> is available.
@@ -184,8 +215,14 @@ function SettingsRoot() {
           {updateState.kind === "checking" && (
             <p className="settings-meta">Checking for updates…</p>
           )}
-          {updateState.kind === "error" && (
+          {updateState.kind === "offline" && (
             <p className="settings-error">Couldn&apos;t reach the update server. Check your connection.</p>
+          )}
+          {updateState.kind === "platform_missing" && (
+            <p className="settings-error">An update was found but does not support your platform.</p>
+          )}
+          {updateState.kind === "other_error" && (
+            <p className="settings-error">Update check failed: {updateState.detail}</p>
           )}
           {updateState.kind === "available" ? (
             <button className="settings-pill-button" onClick={handleInstall}>
@@ -197,7 +234,9 @@ function SettingsRoot() {
               onClick={handleCheckUpdates}
               disabled={updateState.kind === "checking"}
             >
-              {updateState.kind === "error" ? "Retry" : "Check for Updates"}
+              {(updateState.kind === "offline" || updateState.kind === "platform_missing" || updateState.kind === "other_error")
+                ? "Retry"
+                : "Check for Updates"}
             </button>
           )}
         </section>

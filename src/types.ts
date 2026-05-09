@@ -42,6 +42,22 @@ export interface UpdateInfo {
   notes: string | null;
 }
 
+/**
+ * Tagged-enum return type from the `manual_check_update` Tauri command.
+ * Mirrors the Rust `updater_glue::CheckOutcome` (serde tag = "status",
+ * rename_all = "snake_case"). Phase 4 gap-closure 04-12.
+ *
+ * The `_yet` suffix on `no_release_yet` matches the Rust variant
+ * `NoReleaseYet` after snake_case conversion.
+ */
+export type CheckOutcome =
+  | { status: "available"; version: string; notes: string | null }
+  | { status: "up_to_date" }
+  | { status: "no_release_yet" }
+  | { status: "offline"; detail: string }
+  | { status: "platform_missing"; detail: string }
+  | { status: "other_error"; detail: string };
+
 /** Phase 4 — first-run wizard payload. */
 export interface FirstRunState {
   sources: SourceStatus[];
