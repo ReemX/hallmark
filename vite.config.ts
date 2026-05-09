@@ -46,6 +46,10 @@ export default defineConfig({
       "@tauri-apps/api/core",
       "@tauri-apps/api/event",
       "@tauri-apps/api/webviewWindow",
+      // Phase 4 gap closure (04-11): pre-bundle the new shell plugin so the
+      // first cold transform of Settings/UpdateModal doesn't reintroduce the
+      // warmup delay 04-09 closed.
+      "@tauri-apps/plugin-shell",
     ],
   },
 });

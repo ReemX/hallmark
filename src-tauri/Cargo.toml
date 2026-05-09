@@ -41,6 +41,11 @@ sysinfo               = "0.38"
 reqwest               = { version = "0.13", features = ["json", "rustls"], default-features = false }
 # Phase 4: auto-updater (DIST-02)
 tauri-plugin-updater  = "2.10"
+# Phase 4 gap closure (04-11): external-link opener so Settings/UpdateModal
+# anchors invoke the Windows default browser via Tauri shell.open instead of
+# the WebView2-blocked default-browser navigation. Allowlist scoped per-window
+# in capabilities/{settings,companion}.json — see plan 04-11 threat model.
+tauri-plugin-shell    = "2"
 
 # Phase 3: binary VDF reader for legit Steam UserGameStats + SSE stats.bin
 byteorder             = "1.5"

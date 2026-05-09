@@ -346,6 +346,9 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
+        // Phase 4 gap closure (04-11): external-link opener for Settings/UpdateModal.
+        // Allowlist enforced per-window in capabilities/{settings,companion}.json.
+        .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             commands::get_companion_state,
             commands::set_companion_prefs_cmd,
