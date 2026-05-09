@@ -1,9 +1,7 @@
 //! System-tray icon + D-01 locked menu.
 //!
-//! ## Menu structure (D-01, locked)
+//! ## Menu structure (D-01, amended 2026-05-09 — gap-closure 04-13a)
 //! ```text
-//! Hallmark            ← non-clickable header
-//! ─────────────────
 //! Show companion
 //! Fire test popup
 //! ─────────────────
@@ -12,6 +10,12 @@
 //! ─────────────────
 //! Quit
 //! ```
+//!
+//! Original D-01 (Phase 4 plan-phase) included a non-clickable
+//! "Hallmark" header at the top. UAT test 2 (2026-05-09) flagged it
+//! as inconsistent with Discord/Slack/Steam tray-utility convention;
+//! user picked the no-header layout above. CONTEXT.md D-01 amended
+//! with a SUPERSEDED annotation; this code follows the amended spec.
 //!
 //! Left-click on the tray icon = Show companion (D-02).
 //! Quit drains popup queue with 1.5 s grace, then calls `app.exit(0)` (D-03).
@@ -56,10 +60,9 @@ fn build_menu(
     app: &AppHandle,
     autostart_on: bool,
 ) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
-    // D-01 LOCKED order:
-    //   Hallmark / sep / Show companion / Fire test popup / sep /
+    // D-01 amended 2026-05-09 (gap-closure 04-13a) order:
+    //   Show companion / Fire test popup / sep /
     //   Settings… / ☑ Start with Windows / sep / Quit
-    let header = MenuItem::with_id(app, "header", "Hallmark", false, None::<&str>)?;
     let show = MenuItem::with_id(app, "show_companion", "Show companion", true, None::<&str>)?;
     let test = MenuItem::with_id(app, "fire_test", "Fire test popup", true, None::<&str>)?;
     let settings = MenuItem::with_id(app, "open_settings", "Settings…", true, None::<&str>)?;
@@ -68,14 +71,11 @@ fn build_menu(
         .enabled(true)
         .build(app)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
     let sep3 = PredefinedMenuItem::separator(app)?;
 
     MenuBuilder::new(app)
         .items(&[
-            &header,
-            &sep1,
             &show,
             &test,
             &sep2,
@@ -147,10 +147,6 @@ fn handle_menu_event(app: &AppHandle, event: tauri::menu::MenuEvent) {
         }
 
         "quit" => initiate_quit(app),
-
-        "header" => {
-            // Non-clickable header row — no-op (disabled in menu but event may still fire).
-        }
 
         other => {
             tracing::debug!(id = other, "unknown tray menu event");
