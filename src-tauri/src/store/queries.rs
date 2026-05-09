@@ -188,6 +188,63 @@ pub fn count_earned_for_app_session(
     Ok(n)
 }
 
+// ============================================================================
+// Phase 4 additions: first-run wizard flag + updater last-checked timestamp.
+// Settings table (key, value) reused — same pattern as completion_<app_id>.
+// No new migration; key='first_run_done' value='1' (D-14).
+//                  key='last_update_check' value='<unix_secs as string>'.
+// ============================================================================
+
+/// Read the first-run-done flag (D-14). Returns `false` when the row is absent
+/// (fresh install) — wizard fires.
+pub fn get_first_run_done(conn: &Connection) -> anyhow::Result<bool> {
+    let result = conn.query_row(
+        "SELECT value FROM settings WHERE key = 'first_run_done'",
+        [],
+        |r| r.get::<_, String>(0),
+    );
+    match result {
+        Ok(v) => Ok(v == "1"),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(false),
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Write the first-run-done flag (D-14). Idempotent. Caller is responsible
+/// for the dismiss-with-≥1-path predicate per CONTEXT.md D-14.
+pub fn set_first_run_done(conn: &Connection) -> anyhow::Result<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO settings (key, value) VALUES ('first_run_done', '1')",
+        [],
+    )?;
+    Ok(())
+}
+
+/// Read the last successful update-check unix timestamp. Returns Ok(None)
+/// on first run or after DB wipe. Used by Settings → Updates panel for
+/// "Last checked: {relative time or 'just now'}" per UI-SPEC.
+pub fn get_last_update_check(conn: &Connection) -> anyhow::Result<Option<i64>> {
+    let result = conn.query_row(
+        "SELECT value FROM settings WHERE key = 'last_update_check'",
+        [],
+        |r| r.get::<_, String>(0),
+    );
+    match result {
+        Ok(v) => Ok(v.parse::<i64>().ok()),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Write the last successful update-check unix timestamp.
+pub fn set_last_update_check(conn: &Connection, unix_secs: i64) -> anyhow::Result<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO settings (key, value) VALUES ('last_update_check', ?1)",
+        params![unix_secs.to_string()],
+    )?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -309,5 +366,41 @@ mod tests {
             Ok(())
         })
         .unwrap();
+    }
+
+    #[test]
+    fn first_run_done_round_trip() {
+        let s = fresh_store();
+        s.with_conn(|c| {
+            assert_eq!(get_first_run_done(c).unwrap(), false, "fresh DB has no first_run_done flag");
+            set_first_run_done(c).unwrap();
+            assert_eq!(get_first_run_done(c).unwrap(), true, "after set, flag is true");
+            set_first_run_done(c).unwrap();
+            assert_eq!(get_first_run_done(c).unwrap(), true, "set is idempotent");
+            Ok(())
+        }).unwrap();
+    }
+
+    #[test]
+    fn last_update_check_round_trip() {
+        let s = fresh_store();
+        s.with_conn(|c| {
+            assert_eq!(get_last_update_check(c).unwrap(), None, "fresh DB has no timestamp");
+            set_last_update_check(c, 1715000000).unwrap();
+            assert_eq!(get_last_update_check(c).unwrap(), Some(1715000000));
+            set_last_update_check(c, 1715999999).unwrap();
+            assert_eq!(get_last_update_check(c).unwrap(), Some(1715999999), "overwrite, not append");
+            Ok(())
+        }).unwrap();
+    }
+
+    #[test]
+    fn first_run_done_isolated_from_completion() {
+        let s = fresh_store();
+        s.with_conn(|c| {
+            mark_completion_fired(c, 480).unwrap();
+            assert_eq!(get_first_run_done(c).unwrap(), false, "completion key does not affect first_run_done");
+            Ok(())
+        }).unwrap();
     }
 }
