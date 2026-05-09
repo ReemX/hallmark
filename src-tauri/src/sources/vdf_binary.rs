@@ -166,10 +166,24 @@ fn read_cstr<R: Read>(r: &mut R) -> anyhow::Result<String> {
 }
 
 fn read_wstr_skip<R: Read>(r: &mut R) -> anyhow::Result<()> {
+    // WR-07: cap WString consumption at 2048 bytes (1024 UTF-16 code units), mirroring
+    // `read_cstr`'s 1024-byte cap. Without this, an adversarial WString that omits the
+    // terminating `[0, 0]` pair (or has odd-byte alignment producing a stray 0x00 that
+    // never lands on a pair boundary) would consume bytes far past the intended end of
+    // the value, possibly past a 0x08 close tag — subsequent type-tag reads would then
+    // misinterpret the byte stream. Achievement files in the wild don't use tag 0x05,
+    // but the parser advertises support, so the contract should be defensive.
     let mut pair = [0u8; 2];
+    let mut consumed = 0usize;
     loop {
         r.read_exact(&mut pair)?;
-        if pair == [0, 0] { return Ok(()); }
+        consumed += 2;
+        if pair == [0, 0] {
+            return Ok(());
+        }
+        if consumed > 2048 {
+            anyhow::bail!("vdf_binary: WString exceeds 2048 bytes (likely corrupt)");
+        }
     }
 }
 
