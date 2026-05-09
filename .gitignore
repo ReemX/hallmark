@@ -32,3 +32,8 @@ src/**/*.d.ts
 
 # Claude Code runtime task lock
 .claude/scheduled_tasks.lock
+
+# Throwaway artwork-generation outputs (source PNGs for ICO regeneration).
+# Regeneration scripts live in plan SUMMARY.md files (e.g. 04-13b-SUMMARY.md);
+# the bundled artifacts (e.g. src-tauri/icons/*.ico) ARE committed.
+/build/
