@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-05-09T14:35:15.942Z"
-last_activity: 2026-05-09 -- Phase 04 execution started
+last_updated: "2026-05-09T15:35:41.351Z"
+last_activity: 2026-05-09
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 25
-  completed_plans: 19
-  percent: 76
+  completed_plans: 21
+  percent: 84
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 ## Current Position
 
 Phase: 04 (polish-distribution) — EXECUTING
-Plan: 1 of 8
-Status: Executing Phase 04
-Last activity: 2026-05-09 -- Phase 04 execution started
+Plan: 2 of 8
+Status: Ready to execute
+Last activity: 2026-05-09
 
-Progress: [██████████] 100%
+Progress: [████████░░] 84%
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [██████████] 100%
 | Phase 03 P02 | 4min | 1 tasks | 1 files |
 | Phase 03 P03 | 8min | 1 tasks | 1 files |
 | Phase 03 P04 | 6min | 2 tasks | 1 files |
+| Phase 04-polish-distribution P01b | 4min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -136,6 +137,10 @@ Recent decisions affecting current work:
 - [Phase ?]: Plan 03-04: SC3 headline test uses 3 MockAdapter instances; real-adapter coverage in SC3-supplement separates architectural assertion from per-adapter parser complexity
 - [Phase ?]: Plan 03-04: SC3-supplement accepts both schema-resolved api_name AND <crc:0x...> placeholder — dedup invariant holds regardless because same CRC produces same placeholder deterministically
 - [Phase ?]: Plan 03-04: 4-adapter pipeline shipped (Goldberg, SteamLegit, CreamApi, SmartSteamEmu); CrossSourceDedup 2→N adapter generalization proven empirically by 3-source SC3 test
+- [Phase ?]: 04-01b: installMode corrected perUser to currentUser (Tauri schema enum)
+- [Phase ?]: 04-01b: DiscoveredPaths derives Serialize/Deserialize for Tauri IpcResponse
+- [Phase ?]: 04-01b: pending_update uses tokio::sync::Mutex for async-safe update install across await points
+- [Phase ?]: 04-01b: pubkey=PLACEHOLDER_REPLACE_AT_RELEASE in tauri.conf.json — Plan 04-06 injects real Ed25519 key
 
 ### Pending Todos
 
@@ -154,6 +159,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-09T14:35:15.934Z
+Last session: 2026-05-09T15:35:41.342Z
 Stopped at: Phase 4 UI-SPEC approved
 Resume file: None

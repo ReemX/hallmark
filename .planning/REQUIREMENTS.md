@@ -41,15 +41,15 @@
 
 ### Polish
 
-- [ ] **POL-01**: "Fire test popup" button in tray menu / settings — emits a sample unlock through the full pipeline so users can verify the install works without waiting for a real unlock
-- [ ] **POL-02**: Start-with-Windows option (registry `HKCU\...\Run` entry, user-toggleable)
+- [x] **POL-01**: "Fire test popup" button in tray menu / settings — emits a sample unlock through the full pipeline so users can verify the install works without waiting for a real unlock
+- [x] **POL-02**: Start-with-Windows option (registry `HKCU\...\Run` entry, user-toggleable)
 
 ### Distribution
 
-- [ ] **DIST-01**: NSIS installer + portable `.zip` build via Tauri bundler — both artifacts produced per release
-- [ ] **DIST-02**: Auto-updater wired to GitHub Releases `latest.json` via `tauri-plugin-updater`; user is prompted to install available updates
+- [x] **DIST-01**: NSIS installer + portable `.zip` build via Tauri bundler — both artifacts produced per release
+- [x] **DIST-02**: Auto-updater wired to GitHub Releases `latest.json` via `tauri-plugin-updater`; user is prompted to install available updates
 - [ ] **DIST-03**: GitHub Actions release workflow (`tauri-action`) builds and attaches installer + portable artifacts on tag push
-- [ ] **DIST-04**: First-run path-discovery wizard scans for Steam library folders and Goldberg installations and surfaces what was detected (reduces silent zero-popup failure on misconfigured installs)
+- [x] **DIST-04**: First-run path-discovery wizard scans for Steam library folders and Goldberg installations and surfaces what was detected (reduces silent zero-popup failure on misconfigured installs)
 
 ## v2 Requirements
 
@@ -115,12 +115,12 @@
 | GAME-01 | Phase 2 | Complete |
 | GAME-02 | Phase 2 | Complete |
 | GAME-03 | Phase 2 | Complete |
-| POL-01 | Phase 4 | Pending |
-| POL-02 | Phase 4 | Pending |
-| DIST-01 | Phase 4 | Pending |
-| DIST-02 | Phase 4 | Pending |
+| POL-01 | Phase 4 | Complete |
+| POL-02 | Phase 4 | Complete |
+| DIST-01 | Phase 4 | Complete |
+| DIST-02 | Phase 4 | Complete |
 | DIST-03 | Phase 4 | Pending |
-| DIST-04 | Phase 4 | Pending |
+| DIST-04 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 28 total

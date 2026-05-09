@@ -87,7 +87,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. On first launch, the path-discovery wizard scans for Steam library folders and Goldberg/CreamAPI/SmartSteamEmu installations and presents what was found (or not found), so users with zero detected paths see an immediate actionable message rather than silent failure.
 **Plans**: 8 plans
   - [x] 04-01a-PLAN.md — Foundation A: deps + Vite multi-entry + capabilities + 7 module stubs + queries.rs first_run helpers + types.ts extension
-  - [ ] 04-01b-PLAN.md — Foundation B: tauri.conf.json bundle + CSP + lib.rs setup() spine + AppState extension + 4 commands + plugin registration
+  - [x] 04-01b-PLAN.md — Foundation B: tauri.conf.json bundle + CSP + lib.rs setup() spine + AppState extension + 4 commands + plugin registration
   - [ ] 04-02-PLAN.md — Tray icon + autostart (HKCU\Run via winreg) + Quit-with-drain (POL-02 surface)
   - [ ] 04-03-PLAN.md — Test-popup synthetic injector + portable mode detector (POL-01)
   - [ ] 04-04-PLAN.md — Settings window + Updater background-check + Update modal in companion (DIST-02)
@@ -105,4 +105,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Detection Pipeline Foundation | 5/5 | Complete | 2026-05-08 |
 | 2. Premium UI — Popup, Companion & Game Session | 7/7 | Complete   | 2026-05-08 |
 | 3. Remaining Source Adapters | 5/5 | Complete   | 2026-05-09 |
-| 4. Polish & Distribution | 0/8 | Not started | - |
+| 4. Polish & Distribution | 3/8 | In Progress|  |
