@@ -93,7 +93,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [ ] 04-04-PLAN.md — Settings window + Updater background-check + Update modal in companion (DIST-02)
   - [ ] 04-05-PLAN.md — First-run wizard window (DIST-04)
   - [ ] 04-06-PLAN.md — GitHub Actions release pipeline + portable .zip + Ed25519 keypair generation + README polish (DIST-01, DIST-03)
-  - [ ] 04-07-PLAN.md — Final SFX assets (procedural via gen_placeholder_sfx.rs retune)
+  - [x] 04-07-PLAN.md — Final SFX assets (procedural via gen_placeholder_sfx.rs retune)
 
 ## Progress
 
