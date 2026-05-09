@@ -1,10 +1,6 @@
-// First-run wizard entry point — implemented in Plan 04-05.
-// Stub to satisfy Vite 4-entry build config.
 import { createRoot } from "react-dom/client";
-
-function WizardStub() {
-  return <div />;
-}
+import FirstRunWizardRoot from "./FirstRunWizard";
+import "./styles/settings.css";
 
 const root = document.getElementById("root");
-if (root) createRoot(root).render(<WizardStub />);
+if (root) createRoot(root).render(<FirstRunWizardRoot />);
