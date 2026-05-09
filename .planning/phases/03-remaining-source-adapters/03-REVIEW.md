@@ -1,12 +1,14 @@
 ---
 phase: 03
-status: issues_found
+status: fixed
 files_reviewed: 10
 critical: 2
 warning: 8
 info: 6
 depth: standard
 reviewed: 2026-05-09T10:30:00Z
+fixed: 2026-05-09T11:30:00Z
+fixes_applied: 10
 ---
 
 # Phase 03: Remaining Source Adapters — Code Review Report
@@ -367,6 +369,31 @@ for rec in records {
 let mut baseline = self.baseline.write().await;
 for (k, v) in to_insert { baseline.insert(k, v); total_entries += 1; }
 ```
+
+---
+
+## Fixes Applied
+
+Fixed: 2026-05-09T11:30:00Z (10 of 10 critical+warning findings addressed; Info findings deferred per default scope).
+
+| Finding | Commit  | Description |
+| ------- | ------- | ----------- |
+| CR-01 (cream_api.rs) | `c6942a1` | preserve baseline when send fails so retry can fire |
+| CR-01 (steam_legit.rs) | `b1add45` | preserve baseline when send fails so retry can fire |
+| CR-01 (sse.rs)       | `b740c4f` | preserve baseline when send fails so retry can fire |
+| CR-02 (3 adapters)   | `da0e784` | close TOCTOU race on last_hash by claiming under single write lock |
+| WR-01 (3 adapters)   | `cc2c41b` | release baseline lock before tx.send to avoid backpressure stalls |
+| WR-02 (vdf_binary)   | `e083103` | reject EOF in nested VDF object as truncated/corrupt input |
+| WR-03 (integration_phase3) | `ae40fb9` | serialise SC2 + SC3-supplement to avoid env-var race |
+| WR-04 (integration_phase3) | `2c9e0bf` | SC3-supplement counts all events per app_id to catch dedup leaks |
+| WR-05 (integration_phase3) | `51eb299` | rename SC1 to reflect synchronous emission scope, drop misleading latency assertion |
+| WR-06 (3 adapters)   | `caa1e58` | case-insensitive filename guards on Windows filesystem |
+| WR-07 (vdf_binary)   | `b26e083` | cap read_wstr_skip at 2048 bytes to prevent adversarial parser desync |
+| WR-08 (cream_api)    | `0f9547c` | reject empty/whitespace-only section names in CreamAPI parser |
+
+**Verification:** `cargo check --all-targets` passes; `cargo test --lib` runs 132 tests (baseline 131 + 1 new WR-08 test); `cargo test --test integration_phase1` runs 5; `cargo test --test integration_phase3` runs 5. All green.
+
+**Info findings (IN-01 through IN-06)** were not in this fix scope (default = critical+warning). They remain documented above for follow-up.
 
 ---
 
