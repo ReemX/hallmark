@@ -2,7 +2,13 @@
 // Run: rustc scripts\gen_placeholder_sfx.rs -o gen_sfx.exe && .\gen_sfx.exe
 // On Unix-like: rustc scripts/gen_placeholder_sfx.rs -o gen_sfx && ./gen_sfx
 //
-// v1 signature SFX generator. Three procedurally-synthesized WAV files:
+// =============================================================================
+// RETIRED FOR v1 — D-28 OPTION 2 (maintainer-supplied audio) was chosen.
+// This generator is retained as a v1.1 fallback. The three WAV files currently
+// shipped in assets/sfx/ are NOT produced by this script; see assets/sfx/README.md.
+// =============================================================================
+//
+// v1.1 fallback SFX generator. Produces three procedurally-synthesized WAVs:
 //   popup-standard.wav  — D-05 workhorse ding,   ~480ms, -3 dBFS
 //   popup-rare.wav      — D-06 richer sparkle,   ~750ms, -2 dBFS
 //   popup-100pct.wav    — D-12 Do-Mi-Sol ascent, ~1200ms, -2 dBFS
@@ -10,23 +16,33 @@
 // Format: WAV PCM 16-bit, 44100 Hz, mono — satisfies D-29 hard constraint and
 // passes rodio::Decoder::try_from startup validation in src-tauri/src/audio.rs.
 //
-// Synthesis pipeline (per tier):
-//   risset_bell (11 inharmonic partials, per-partial decay)
-// + fm_voice  (C:M = 1:1.4142, exp-decaying modulation index)
-// + fm_voice  (C:M = 1:3.5, low-amp shimmer, fast modulator decay)  [rare/comp]
-//   → unison detune ±4 cents on FM voices
-//   → cosine attack (4–6 ms)
-//   → tanh soft saturation (drive 1.6–1.8)
-//   → Schroeder reverb (4 combs + 2 allpasses, 80–200 ms tail)
-//   → DC blocker (1-pole HPF)
-//   → cosine tail fade-out (8 ms, guarantees zero-crossing end)
+// Synthesis approach (v3 — "warm marimba" after v2 inharmonic bell tested as harsh):
+//
+//   2-3 sine partials at integer ratios (clean tone, no inharmonicity)
+// + 1 low-index FM operator (C:M = 1:1.4142, modulation_index ≈ 0.6) — woody
+//   character without the metallic clang of high-index FM
+//   → cosine attack (6-10 ms — softer than v2)
+//   → exponential release with long tau (300-500 ms)
+//   → 1-pole low-pass filter at ~3.5 kHz (kills harshness, "Windows alert"
+//     edge gone)
+//   → tanh soft saturation, drive ≈ 1.2 (very subtle)
+//   → tiny Schroeder reverb (40-80 ms tail, 8-12% wet — hint of room only)
+//   → DC blocker + cosine tail fade-out
 //   → normalize to target dBFS
 //   → quantize to i16
 //
+// Why this is different from v2:
+//   v2 stacked Risset's 11 inharmonic partials + a strong-index FM at C:M=3.5.
+//   Both add metallic clang. User feedback: "ear-rape of a metal pipe."
+//   v3 strips back to: warm fundamentals + subtle woody FM + LP roll-off +
+//   minimal reverb. Closer to iOS Tritone (recorded marimba) than to a church
+//   bell. PS5 trophy is bell-like but crystalline — we choose marimba-like
+//   because mathematical bells in pure code reliably read as "harsh".
+//
 // References:
-//   Risset's 11-partial bell — http://msp.ucsd.edu/techniques/v0.11/book-html/node71.html
-//   Chowning FM bell        — https://ccrma.stanford.edu/software/clm/compmus/clm-tutorials/fm2.html
-//   Schroeder reverb        — https://ccrma.stanford.edu/~jos/pasp/Schroeder_Allpass_Sections.html
+//   Apple Tritone is a recorded marimba — https://www.20k.org/episodes/the-sound-of-apple
+//   Chowning FM bell                     — https://ccrma.stanford.edu/software/clm/compmus/clm-tutorials/fm2.html
+//   Schroeder reverb                     — https://ccrma.stanford.edu/~jos/pasp/Schroeder_Allpass_Sections.html
 //
 // DO NOT commit the compiled binary (gen_sfx.exe / gen_sfx). It is gitignored.
 // Commit only this source file and the three WAV outputs.
@@ -62,53 +78,44 @@ fn write_wav(path: &str, samples: &[i16], sr: u32) {
 }
 
 // ---------------------------------------------------------------------------
-// Risset's canonical 11-partial bell — inharmonic ratios with per-partial
-// decay times. This single function moves output from "Windows alert" to
-// "premium bell" more than any other change. The 0.56/0.563 and 0.92/0.923
-// pairs are deliberate beating partials (~3 Hz beat) — that's the shimmer.
+// Additive sine partials at integer/clean ratios. Each partial gets its own
+// amplitude and decay tau (high partials die faster than low partials).
+// Slight (≤5 cent) random-walk detune flag adds a touch of beating warmth.
 // ---------------------------------------------------------------------------
-const RISSET_PARTIALS: &[(f32, f32, f32)] = &[
-    // (freq_mult, amp_mult, tau_ms)
-    (0.56,  1.00, 1000.0),
-    (0.563, 0.67, 1000.0),
-    (0.92,  1.00,  700.0),
-    (0.923, 1.80,  700.0),
-    (1.19,  2.67,  400.0),
-    (1.70,  1.46,  300.0),
-    (2.00,  1.33,  200.0),
-    (2.74,  1.33,  150.0),
-    (3.00,  1.00,  150.0),
-    (3.74,  1.33,  100.0),
-    (4.07,  0.75,   80.0),
-];
-
-fn risset_bell(f0: f32, dur_ms: u32, sr: u32) -> Vec<f32> {
+fn additive_partials(
+    f0: f32,
+    partials: &[(f32, f32, f32)], // (freq_mult, amp, tau_ms)
+    detune_cents: f32,            // small detune on alternating partials
+    dur_ms: u32,
+    sr: u32,
+) -> Vec<f32> {
     let n = (dur_ms as u64 * sr as u64 / 1000) as usize;
     let mut out = vec![0.0_f32; n];
-    for &(fr, ar, tau_ms) in RISSET_PARTIALS {
-        let f = f0 * fr;
+    let dt = 1.0 / sr as f32;
+    for (k, &(fr, ar, tau_ms)) in partials.iter().enumerate() {
+        // Apply detune alternating (+ / -) per partial — produces slow beats
+        let sign: f32 = if k % 2 == 0 { 1.0 } else { -1.0 };
+        let r = 2f32.powf(sign * detune_cents / 1200.0);
+        let f = f0 * fr * r;
         let tau_s = tau_ms / 1000.0;
-        let decay = (-1.0_f32 / (tau_s * sr as f32)).exp();
+        let decay_coef = (-1.0_f32 / (tau_s * sr as f32)).exp();
         let mut env = ar;
         let two_pi_f = 2.0 * PI * f;
-        let dt = 1.0 / sr as f32;
         for i in 0..n {
             let t = i as f32 * dt;
             out[i] += env * (two_pi_f * t).sin();
-            env *= decay;
+            env *= decay_coef;
         }
     }
     out
 }
 
 // ---------------------------------------------------------------------------
-// FM operator — y = sin(2π·fc·t + I(t)·sin(2π·fm·t))
-// I(t) decays exponentially from idx_start to ~0 with tau idx_tau_ms.
-// Use C:M ratios:
-//   1.4142 (≈ √2) → woody mallet character
-//   3.5            → classic DX7 TUB BELLS metallic shimmer
+// FM operator — woody mallet character only. Keep modulation index LOW
+// (≈0.4–1.0) and C:M ratio at ≈1.4142 to stay marimba-side, NOT bell-side.
+// Higher idx + ratio=3.5 made v2 sound metallic; we deliberately avoid it.
 // ---------------------------------------------------------------------------
-fn fm_voice(
+fn fm_voice_woody(
     fc: f32,
     cm_ratio: f32,
     idx_start: f32,
@@ -135,30 +142,37 @@ fn fm_voice(
 }
 
 // ---------------------------------------------------------------------------
-// Slow amplitude envelope on top of the per-partial decay — applies a global
-// exp-decay shape with cosine attack to taper the whole voice.
+// 1-pole low-pass filter (RC-style). Critical for premium feel — strips the
+// metallic top-end glare that math-synthesis produces. Cutoff ~3.5 kHz keeps
+// the body intact while killing harshness above the 2nd-3rd harmonic.
 // ---------------------------------------------------------------------------
-fn apply_global_envelope(buf: &mut [f32], attack_ms: f32, tau_ms: f32, sr: u32) {
-    let n = buf.len();
-    let attack_n = (attack_ms / 1000.0 * sr as f32) as usize;
-    let tau_s = tau_ms / 1000.0;
-    let decay_coef = (-1.0_f32 / (tau_s * sr as f32)).exp();
-    let mut env = 1.0_f32;
-    for i in 0..n {
-        // Cosine attack S-curve (smoother than linear, no derivative discontinuity)
-        let attack_env = if i < attack_n {
-            let p = i as f32 / attack_n.max(1) as f32;
-            0.5 - 0.5 * (PI * p).cos()
-        } else {
-            1.0
-        };
-        buf[i] *= attack_env * env;
-        env *= decay_coef;
+fn lowpass_1pole(buf: &mut [f32], cutoff_hz: f32, sr: u32) {
+    // y[n] = α·x[n] + (1-α)·y[n-1]
+    let rc = 1.0 / (2.0 * PI * cutoff_hz);
+    let dt = 1.0 / sr as f32;
+    let alpha = dt / (rc + dt);
+    let mut y = 0.0_f32;
+    for x in buf.iter_mut() {
+        y = alpha * *x + (1.0 - alpha) * y;
+        *x = y;
     }
 }
 
 // ---------------------------------------------------------------------------
-// Sum a buffer into a target buffer at given gain — additive mix helper.
+// Cosine attack (S-curve, no derivative discontinuity)
+// ---------------------------------------------------------------------------
+fn cosine_attack(buf: &mut [f32], attack_ms: f32, sr: u32) {
+    let attack_n = (attack_ms / 1000.0 * sr as f32) as usize;
+    let n_take = attack_n.min(buf.len());
+    for i in 0..n_take {
+        let p = i as f32 / attack_n.max(1) as f32;
+        let env = 0.5 - 0.5 * (PI * p).cos();
+        buf[i] *= env;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Mix src into target additively
 // ---------------------------------------------------------------------------
 fn mix_into(target: &mut Vec<f32>, src: &[f32], gain: f32) {
     if target.len() < src.len() {
@@ -170,30 +184,8 @@ fn mix_into(target: &mut Vec<f32>, src: &[f32], gain: f32) {
 }
 
 // ---------------------------------------------------------------------------
-// Unison detune helper — generate three copies of an FM voice slightly
-// detuned (±cents) and average. Adds beating thickness.
-// ---------------------------------------------------------------------------
-fn fm_voice_detuned(
-    fc: f32,
-    cm_ratio: f32,
-    idx_start: f32,
-    idx_tau_ms: f32,
-    dur_ms: u32,
-    sr: u32,
-    cents: f32,
-) -> Vec<f32> {
-    let r = 2f32.powf(cents / 1200.0);
-    let a = fm_voice(fc, cm_ratio, idx_start, idx_tau_ms, dur_ms, sr);
-    let b = fm_voice(fc * r, cm_ratio, idx_start, idx_tau_ms, dur_ms, sr);
-    let c = fm_voice(fc / r, cm_ratio, idx_start, idx_tau_ms, dur_ms, sr);
-    a.iter().zip(b.iter()).zip(c.iter())
-        .map(|((x, y), z)| (x + y + z) / 3.0)
-        .collect()
-}
-
-// ---------------------------------------------------------------------------
-// Soft saturation via tanh — adds odd-harmonic warmth, glues unison voices,
-// limits transients without hard clipping. Apply BEFORE normalization.
+// Soft saturation via tanh — keep drive subtle (1.1-1.3) for warmth without
+// adding harmonics that LP filter can't catch.
 // ---------------------------------------------------------------------------
 fn soft_clip(buf: &mut [f32], drive: f32) {
     let knee = drive.tanh();
@@ -203,8 +195,8 @@ fn soft_clip(buf: &mut [f32], drive: f32) {
 }
 
 // ---------------------------------------------------------------------------
-// Schroeder reverb — 4 parallel feedback combs into 2 series allpasses.
-// Delays in samples are coprime to avoid resonance pile-up. Mono in/out.
+// Schroeder reverb — keep feedback LOW (0.5-0.7) and wet mix LOW (5-12%)
+// for "hint of room" rather than "cathedral".
 // ---------------------------------------------------------------------------
 struct Comb {
     buf: Vec<f32>,
@@ -222,7 +214,6 @@ impl Comb {
         y
     }
 }
-
 struct Allpass {
     buf: Vec<f32>,
     idx: usize,
@@ -241,10 +232,7 @@ impl Allpass {
     }
 }
 
-// Apply Schroeder reverb to dry signal. Extends the buffer by `tail_ms` to
-// allow the reverb tail to ring out beyond the dry signal.
 fn apply_reverb(dry: &[f32], wet_mix: f32, fb: f32, sr: u32, tail_ms: u32) -> Vec<f32> {
-    // Coprime delay lengths (Freeverb-style proportions)
     let mut combs = [
         Comb::new(1557, fb),
         Comb::new(1617, fb),
@@ -271,8 +259,7 @@ fn apply_reverb(dry: &[f32], wet_mix: f32, fb: f32, sr: u32, tail_ms: u32) -> Ve
 }
 
 // ---------------------------------------------------------------------------
-// DC blocker — 1-pole high-pass filter, removes asymmetric DC offset
-// introduced by saturation. Run AFTER reverb, BEFORE final normalize.
+// DC blocker
 // ---------------------------------------------------------------------------
 fn dc_block(buf: &mut [f32]) {
     let mut x_prev = 0.0_f32;
@@ -286,8 +273,7 @@ fn dc_block(buf: &mut [f32]) {
 }
 
 // ---------------------------------------------------------------------------
-// Cosine tail fade-out — guarantees the last sample is exactly 0.0,
-// preventing end-of-file click on playback or retrigger.
+// Cosine tail fade-out — guarantees zero last sample
 // ---------------------------------------------------------------------------
 fn cosine_tail_fade(buf: &mut [f32], tail_ms: f32, sr: u32) {
     let tail_n = (tail_ms / 1000.0 * sr as f32) as usize;
@@ -302,9 +288,6 @@ fn cosine_tail_fade(buf: &mut [f32], tail_ms: f32, sr: u32) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Normalize to target dBFS (peak normalize)
-// ---------------------------------------------------------------------------
 fn normalize_to_dbfs(buf: &mut [f32], target_dbfs: f32) {
     let peak = buf.iter().map(|x| x.abs()).fold(0.0_f32, f32::max).max(1e-9);
     let target_linear = 10f32.powf(target_dbfs / 20.0);
@@ -314,9 +297,6 @@ fn normalize_to_dbfs(buf: &mut [f32], target_dbfs: f32) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Clamp-quantize f32 → i16 PCM
-// ---------------------------------------------------------------------------
 fn to_i16(buf: &[f32]) -> Vec<i16> {
     buf.iter()
         .map(|&x| (x * 32767.0).clamp(-32768.0, 32767.0) as i16)
@@ -324,38 +304,66 @@ fn to_i16(buf: &[f32]) -> Vec<i16> {
 }
 
 // ---------------------------------------------------------------------------
-// Build one tier voice: Risset bell + FM mallet + (optional) FM shimmer.
-// Returns the raw mixed signal BEFORE post-processing (saturation, reverb).
+// Build a single warm marimba-style voice. Returns the raw mixed signal
+// before saturation/reverb.
+//
+// f0 is the fundamental. The voice consists of:
+//   - additive sines: fundamental + octave + sub at decay-weighted amps
+//   - 1 woody FM operator (low idx) for mallet character
 // ---------------------------------------------------------------------------
-fn build_tier_voice(
+fn build_warm_voice(
     f0: f32,
     body_ms: u32,
-    risset_gain: f32,
-    fm_woody_gain: f32,
-    fm_metallic_gain: f32,
+    additive_gain: f32,
+    fm_gain: f32,
     sr: u32,
 ) -> Vec<f32> {
-    // Risset 11-partial inharmonic bell — the perceptual core.
-    let mut bell = risset_bell(f0, body_ms, sr);
-    // Apply per-partial decays inside risset_bell already; add a soft global env
-    // to taper the strike onset.
-    apply_global_envelope(&mut bell, 4.0, 1000.0, sr);
+    // Additive partials — fundamental + octave + sub-octave, with subtle detune
+    let partials = &[
+        (1.0, 0.85,  500.0),  // fundamental — long ring
+        (2.0, 0.30,  220.0),  // octave — medium decay
+        (0.5, 0.20,  600.0),  // sub-octave — body / weight
+    ];
+    let mut additive = additive_partials(f0, partials, 3.0, body_ms, sr);
 
-    // FM operator at C:M = 1:1.4142 — woody mallet attack character.
-    let mut fm_woody = fm_voice_detuned(f0, 1.4142, 4.0, 80.0, body_ms, sr, 4.0);
-    apply_global_envelope(&mut fm_woody, 4.0, 200.0, sr);
+    // FM woody mallet — LOW modulation index, woody C:M ratio
+    let mut fm = fm_voice_woody(f0, 1.4142, 0.6, 90.0, body_ms, sr);
 
-    // FM operator at C:M = 1:3.5 — metallic DX7 bell shimmer (low amp).
-    let mut fm_metallic = fm_voice(f0, 3.5, 5.0, 60.0, body_ms, sr);
-    apply_global_envelope(&mut fm_metallic, 4.0, 120.0, sr);
+    let mut mix = vec![0.0_f32; (body_ms as usize * sr as usize) / 1000];
+    mix_into(&mut mix, &additive, additive_gain);
+    mix_into(&mut mix, &fm, fm_gain);
 
-    // Mix
-    let n = body_ms as usize * sr as usize / 1000;
-    let mut mix = vec![0.0_f32; n];
-    mix_into(&mut mix, &bell, risset_gain);
-    mix_into(&mut mix, &fm_woody, fm_woody_gain);
-    mix_into(&mut mix, &fm_metallic, fm_metallic_gain);
+    // Suppress unused-warning by re-binding (rust drops them anyway)
+    let _ = (additive.len(), fm.len());
+    additive.clear();
+    fm.clear();
     mix
+}
+
+// ---------------------------------------------------------------------------
+// Apply the post pipeline: cosine attack → LP filter → soft clip → reverb
+//   → DC block → tail fade → normalize → i16
+// ---------------------------------------------------------------------------
+fn finalize(
+    mut mix: Vec<f32>,
+    attack_ms: f32,
+    lp_cutoff_hz: f32,
+    drive: f32,
+    reverb_wet: f32,
+    reverb_fb: f32,
+    reverb_tail_ms: u32,
+    fade_ms: f32,
+    target_dbfs: f32,
+    sr: u32,
+) -> Vec<i16> {
+    cosine_attack(&mut mix, attack_ms, sr);
+    lowpass_1pole(&mut mix, lp_cutoff_hz, sr);
+    soft_clip(&mut mix, drive);
+    let mut wet = apply_reverb(&mix, reverb_wet, reverb_fb, sr, reverb_tail_ms);
+    dc_block(&mut wet);
+    cosine_tail_fade(&mut wet, fade_ms, sr);
+    normalize_to_dbfs(&mut wet, target_dbfs);
+    to_i16(&wet)
 }
 
 // ---------------------------------------------------------------------------
@@ -363,81 +371,90 @@ fn build_tier_voice(
 // ---------------------------------------------------------------------------
 fn main() {
     // -----------------------------------------------------------------------
-    // STANDARD — D-05 workhorse popup ding, ~480ms total (with 80ms reverb tail).
-    //   f0 = 880 Hz (A5)
-    //   Risset bell @ 1.0 + woody FM @ 0.6 + metallic FM @ 0.15
-    //   Reverb: 80ms tail, 18% wet, fb=0.78
+    // STANDARD — D-05 workhorse popup ding, ~480ms (with 60ms reverb tail).
+    //   f0 = 660 Hz (E5) — lower than v2's 880 Hz to reduce piercing top
+    //   Additive @ 1.0 + woody FM @ 0.35
+    //   LP @ 3500 Hz, drive=1.15 (very subtle), reverb 60ms / 8% wet
     // -----------------------------------------------------------------------
     {
-        let body_ms = 400;
-        let mut mix = build_tier_voice(880.0, body_ms, 1.0, 0.6, 0.15, SR);
-        soft_clip(&mut mix, 1.6);
-        let mut wet = apply_reverb(&mix, 0.18, 0.78, SR, 80);
-        dc_block(&mut wet);
-        cosine_tail_fade(&mut wet, 8.0, SR);
-        normalize_to_dbfs(&mut wet, -3.0);
-        write_wav("assets/sfx/popup-standard.wav", &to_i16(&wet), SR);
+        let body_ms = 420;
+        let mix = build_warm_voice(660.0, body_ms, 1.0, 0.35, SR);
+        let pcm = finalize(
+            mix,
+            8.0,    // attack
+            3500.0, // LP cutoff
+            1.15,   // saturation drive (very subtle)
+            0.08,   // reverb wet
+            0.55,   // reverb feedback
+            60,     // reverb tail ms
+            10.0,   // tail fade ms
+            -3.0,   // target dBFS
+            SR,
+        );
+        write_wav("assets/sfx/popup-standard.wav", &pcm, SR);
     }
 
     // -----------------------------------------------------------------------
     // RARE — D-06 richer/brighter tier, ~750ms.
-    //   f0 = 1200 Hz
-    //   Risset bell @ 1.0 + woody FM @ 0.55 + metallic FM @ 0.30 (more shimmer)
-    //   Reverb: 150ms tail, 22% wet, fb=0.82
+    //   f0 = 880 Hz (A5) — slightly brighter than standard, less piercing
+    //   Additive @ 1.0 + woody FM @ 0.5 (more mallet character)
+    //   LP @ 4500 Hz (more brilliance), drive=1.25, reverb 100ms / 14% wet
     // -----------------------------------------------------------------------
     {
-        let body_ms = 600;
-        let mut mix = build_tier_voice(1200.0, body_ms, 1.0, 0.55, 0.30, SR);
-        soft_clip(&mut mix, 1.8);
-        let mut wet = apply_reverb(&mix, 0.22, 0.82, SR, 150);
-        dc_block(&mut wet);
-        cosine_tail_fade(&mut wet, 10.0, SR);
-        normalize_to_dbfs(&mut wet, -2.0);
-        write_wav("assets/sfx/popup-rare.wav", &to_i16(&wet), SR);
+        let body_ms = 650;
+        let mix = build_warm_voice(880.0, body_ms, 1.0, 0.5, SR);
+        let pcm = finalize(
+            mix,
+            10.0,   // attack
+            4500.0, // LP cutoff (more highs through)
+            1.25,   // saturation drive
+            0.14,   // reverb wet
+            0.65,   // reverb feedback
+            100,    // reverb tail ms
+            10.0,   // tail fade ms
+            -2.0,   // target dBFS
+            SR,
+        );
+        write_wav("assets/sfx/popup-rare.wav", &pcm, SR);
     }
 
     // -----------------------------------------------------------------------
     // COMPLETION — D-12 celebratory ascending Do-Mi-Sol (C5-E5-G5), ~1200ms.
-    //   Three notes overlapping with shared reverb so the tail of each note
-    //   bleeds into the onset of the next (no hard cut between notes).
-    //   Each note: Risset bell + woody FM + metallic FM at increasing brightness.
-    //   Final reverb: 200ms tail, 25% wet, fb=0.84.
+    //   Three notes overlapping (each 380ms, stride 320ms).
+    //   Each note uses build_warm_voice; final note slightly longer.
+    //   LP @ 4000 Hz, drive=1.2, reverb 150ms / 18% wet (a hint more "room").
     // -----------------------------------------------------------------------
     {
-        let note_ms = 380;
-        let n_per_note = note_ms as usize * SR as usize / 1000;
-        let stride_ms = 320; // notes start every 320ms (overlapping by 60ms)
+        let note_ms = 380u32;
+        let stride_ms = 320u32;
         let stride_n = stride_ms as usize * SR as usize / 1000;
-        let total_n = stride_n * 2 + n_per_note;
+        let n1 = build_warm_voice(523.25, note_ms, 1.0, 0.45, SR);
+        let n2 = build_warm_voice(659.25, note_ms, 1.0, 0.45, SR);
+        let n3 = build_warm_voice(784.0, note_ms + 100, 1.0, 0.55, SR); // hold last note slightly
+        let total_n = stride_n * 2 + n3.len();
         let mut comp = vec![0.0_f32; total_n];
+        for (i, &s) in n1.iter().enumerate() { comp[i] += s; }
+        for (i, &s) in n2.iter().enumerate() { comp[stride_n + i] += s; }
+        for (i, &s) in n3.iter().enumerate() { comp[stride_n * 2 + i] += s; }
 
-        // Note 1: C5 (523.25 Hz), starts at t=0
-        let n1 = build_tier_voice(523.25, note_ms, 1.0, 0.55, 0.20, SR);
-        for (i, &s) in n1.iter().enumerate() {
-            comp[i] += s;
-        }
-        // Note 2: E5 (659.25 Hz), starts at t=320ms
-        let n2 = build_tier_voice(659.25, note_ms, 1.0, 0.55, 0.25, SR);
-        for (i, &s) in n2.iter().enumerate() {
-            comp[stride_n + i] += s;
-        }
-        // Note 3: G5 (784.00 Hz), starts at t=640ms — extra shimmer (4·f0 partial via metallic FM)
-        let n3 = build_tier_voice(784.0, note_ms, 1.0, 0.60, 0.40, SR);
-        for (i, &s) in n3.iter().enumerate() {
-            comp[stride_n * 2 + i] += s;
-        }
-
-        soft_clip(&mut comp, 1.8);
-        let mut wet = apply_reverb(&comp, 0.25, 0.84, SR, 200);
-        dc_block(&mut wet);
-        cosine_tail_fade(&mut wet, 12.0, SR);
-        normalize_to_dbfs(&mut wet, -2.0);
-        write_wav("assets/sfx/popup-100pct.wav", &to_i16(&wet), SR);
+        let pcm = finalize(
+            comp,
+            8.0,    // attack
+            4000.0, // LP cutoff
+            1.20,   // saturation drive
+            0.18,   // reverb wet
+            0.70,   // reverb feedback
+            150,    // reverb tail ms
+            12.0,   // tail fade ms
+            -2.0,   // target dBFS
+            SR,
+        );
+        write_wav("assets/sfx/popup-100pct.wav", &pcm, SR);
     }
 
     println!(
         "ok — generated assets/sfx/popup-standard.wav (~480ms, -3dBFS), \
          popup-rare.wav (~750ms, -2dBFS), popup-100pct.wav (~1200ms, -2dBFS) \
-         using Risset bell + dual-FM (C:M=1.4142 + 1:3.5) + Schroeder reverb pipeline"
+         using warm-marimba pipeline (additive + low-idx FM + LP@3.5-4.5kHz + tiny reverb)"
     );
 }
