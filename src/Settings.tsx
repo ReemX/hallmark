@@ -69,6 +69,9 @@ function SettingsRoot() {
   // Initial scan — load cached_discovery via rescan_paths command.
   useEffect(() => {
     if (!("__TAURI_INTERNALS__" in window)) return;
+    // Phase 4 gap closure (04-09): signal backend that settings WebView mounted.
+    invoke("settings_ready").catch((e) => console.warn("settings_ready invoke failed:", e));
+
     invoke<DiscoveredPathsRust>("rescan_paths")
       .then((d) => setView(rustToView(d)))
       .catch((e) => setScanError(String(e)));

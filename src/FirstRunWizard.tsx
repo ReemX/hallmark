@@ -50,6 +50,12 @@ function FirstRunWizardRoot() {
   // Initial scan on mount.
   useEffect(() => {
     if (!("__TAURI_INTERNALS__" in window)) return;
+    // Phase 4 gap closure (04-09): signal backend that wizard WebView mounted.
+    // Currently a no-op for behavior (no backend emits to wizard) but provides
+    // an instrumentation log line marking 'wizard React tree mounted' and
+    // future-proofs the surface in case a backend task ever needs to emit here.
+    invoke("wizard_ready").catch((e) => console.warn("wizard_ready invoke failed:", e));
+
     invoke<DiscoveredPathsRust>("rescan_paths")
       .then((d) => setView(rustToView(d)))
       .catch((e) => setError(String(e)));
