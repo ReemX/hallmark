@@ -169,11 +169,12 @@ pub mod commands {
     }
 
     /// Settings → "Check for Updates" — synchronous user-triggered check.
-    /// Returns Some(UpdateInfoView) if newer; None if up to date.
+    /// Returns a CheckOutcome (tagged enum) so the frontend can render
+    /// kind-specific copy. Phase 4 gap-closure (04-12).
     #[tauri::command]
     pub async fn manual_check_update(
         app: tauri::AppHandle,
-    ) -> Result<Option<UpdateInfoView>, String> {
+    ) -> Result<crate::updater_glue::CheckOutcome, String> {
         crate::updater_glue::manual_check(app).await
     }
 
@@ -236,6 +237,10 @@ pub mod commands {
 
 // Re-export top-level types for Plan 07 convenience.
 pub use commands::{AppState, CompanionState};
+// Phase 4 gap-closure (04-12): expose CheckOutcome at crate root so the
+// `manual_check_update` command's return type is available consistently
+// alongside AppState.
+pub use updater_glue::CheckOutcome;
 
 /// Wait on a Notify with a timeout. Returns true if signalled, false on timeout.
 /// Used by popup_queue::run (and any future backend task that emits to a
