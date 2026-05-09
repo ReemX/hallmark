@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-05-09T09:05:03.136Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-05-09T09:10:56.076Z"
 last_activity: 2026-05-09
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 17
-  completed_plans: 15
-  percent: 88
+  completed_plans: 16
+  percent: 94
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 ## Current Position
 
 Phase: 03 (Remaining Source Adapters) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-05-09
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -65,6 +65,7 @@ Progress: [█████████░] 88%
 | Phase 02-premium-ui-popup-companion-game-session P06 | 4 | 2 tasks | 12 files |
 | Phase 03 P00 | 12 | 2 tasks | 10 files |
 | Phase 03 P01 | 8min | 2 tasks | 6 files |
+| Phase 03 P02 | 4min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,10 @@ Recent decisions affecting current work:
 - [Phase ?]: Plan 03-01: Schema container path-walk is deterministic (numeric-appid key descent then root fallback) — robust to schema files with extra root metadata
 - [Phase ?]: Plan 03-01: Missing-schema placeholder format steam_stat_<stat>_<bit> — popup still fires with degraded display (Pitfall #8) instead of silently dropping
 - [Phase ?]: Plan 03-01: discover_paths registry fallback — if HKCU\Software\Valve\Steam\Users is empty, scan UserGameStats_*.bin filenames in appcache/stats to extract a user_id
+- [Phase ?]: Plan 03-02: Section header default-to-false on first encounter — out.entry(inner).or_insert(false) ensures locked achievements appear in baseline so future false→true writes are detectable
+- [Phase ?]: Plan 03-02: 1/true equivalence is case-insensitive — matches real CreamAPI writes that use mixed case (True, TRUE, 1)
+- [Phase ?]: Plan 03-02: discover_paths uses dirs::data_dir() (not config_dir) — resolves to %APPDATA%\Roaming on Windows where CreamAPI installs
+- [Phase ?]: Plan 03-02: Numeric-appid filter applied at discover_paths (not adapter time) — non-numeric subdirs in %APPDATA%\CreamAPI skipped before becoming watch roots
 
 ### Pending Todos
 
@@ -136,6 +141,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-09T09:05:03.127Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-05-09T09:10:56.066Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None
