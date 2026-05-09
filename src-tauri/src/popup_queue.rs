@@ -96,11 +96,25 @@ pub async fn run(
     store: Arc<SqliteStore>,
     session_id: String,
     current_pid: Arc<TokioMutex<Option<u32>>>,
+    popup_ready: Arc<tokio::sync::Notify>,
 ) {
     // 100% celebration deferred-emit state. Set when an unlock completes the
     // achievement set; emitted by the tokio::select! idle branch once the
     // channel goes idle (D-12 + Pitfall 10).
     let mut celebration_pending: Option<PopupPayload> = None;
+
+    // Phase 4 gap closure (04-09): wait for the popup WebView to mount
+    // and register its 'popup-show' / 'popup-hide' listeners before we
+    // emit the first event. Tauri events do NOT buffer for late listeners,
+    // so emitting before mount means the event is silently dropped — which
+    // produces the 'SFX without popup' race observed in UAT test 4.
+    // 5-second timeout is the backstop: if the frontend never reports
+    // ready (crash on mount), proceed anyway with a warn-level log.
+    crate::wait_for_ready_with_timeout(
+        popup_ready,
+        std::time::Duration::from_secs(5),
+        "popup",
+    ).await;
 
     tracing::info!("popup_queue task started (B-2 tokio::select! drain — no drops)");
 
