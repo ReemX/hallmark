@@ -17,7 +17,8 @@ Decimal phases appear between their surrounding integers in numeric order.
  (completed 2026-05-08)
 - [x] **Phase 3: Remaining Source Adapters** - Steam-legit binary VDF adapter, CreamAPI adapter, SmartSteamEmu adapter, cross-source dedup
  (completed 2026-05-09)
-- [x] **Phase 4: Polish & Distribution** - Test popup trigger, start-with-Windows, NSIS installer, auto-updater, GitHub Actions release pipeline, first-run wizard (completed 2026-05-09)
+- [x] **Phase 4: Polish & Distribution** - Test popup trigger, start-with-Windows, NSIS installer, auto-updater, GitHub Actions release pipeline, first-run wizard
+ (completed 2026-05-09)
 
 ## Phase Details
 
@@ -85,7 +86,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. A GitHub Release tag push triggers a GitHub Actions workflow that produces both an NSIS installer `.exe` and a portable `.zip`, attaches them to the release, and publishes `latest.json` for the auto-updater.
   4. When a newer version is available on GitHub Releases, Hallmark prompts the user to install the update in-app via `tauri-plugin-updater`; the update installs and restarts without requiring manual download.
   5. On first launch, the path-discovery wizard scans for Steam library folders and Goldberg/CreamAPI/SmartSteamEmu installations and presents what was found (or not found), so users with zero detected paths see an immediate actionable message rather than silent failure.
-**Plans**: 8 plans
+**Plans**: 15 plans (8 original + 7 gap-closure)
   - [x] 04-01a-PLAN.md — Foundation A: deps + Vite multi-entry + capabilities + 7 module stubs + queries.rs first_run helpers + types.ts extension
   - [x] 04-01b-PLAN.md — Foundation B: tauri.conf.json bundle + CSP + lib.rs setup() spine + AppState extension + 4 commands + plugin registration
   - [x] 04-02-PLAN.md — Tray icon + autostart (HKCU\Run via winreg) + Quit-with-drain (POL-02 surface)
@@ -94,6 +95,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [x] 04-05-PLAN.md — First-run wizard window (DIST-04)
   - [x] 04-06-PLAN.md — GitHub Actions release pipeline + portable .zip + Ed25519 keypair generation + README polish (DIST-01, DIST-03)
   - [x] 04-07-PLAN.md — Final SFX assets (procedural via gen_placeholder_sfx.rs retune)
+  - [ ] 04-08-PLAN.md — Gap closure: test_trigger timestamp-suffixed api_name + popup_queue display fallback (UAT test 4 root cause #1)
+  - [ ] 04-09-PLAN.md — Gap closure: Vite optimizeDeps + WebView ready handshake (popup_ready / wizard_ready / settings_ready Notify gates) (UAT test 4 root cause #2 + test 14 #1)
+  - [ ] 04-10-PLAN.md — Gap closure: settings.css surface regression patch (reset, scroll containment, sticky header, skeleton mirror, scrollbar styling) + 3 drag-region attribute additions (UAT tests 3, 6, 7, 14)
+  - [ ] 04-11-PLAN.md — Gap closure: tauri-plugin-shell wiring (Cargo + npm + Builder + capability least-privilege allowlist + Settings/UpdateModal openExternal) (UAT test 6 dead links)
+  - [ ] 04-12-PLAN.md — Gap closure: CheckOutcome tagged enum (no_release / offline / platform_missing / other_error) — Settings Updates panel error wording (UAT test 9)
+  - [ ] 04-13a-PLAN.md — Gap closure: tray.rs Hallmark header drop + 04-CONTEXT D-01 amendment (UAT test 2 root cause #1; autonomous, wave 1)
+  - [ ] 04-13b-PLAN.md — Gap closure: tray.ico/icon.ico real artwork (UAT test 2 root cause #2; human-action checkpoint, wave 1)
 
 ## Progress
 
@@ -105,4 +113,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Detection Pipeline Foundation | 5/5 | Complete | 2026-05-08 |
 | 2. Premium UI — Popup, Companion & Game Session | 7/7 | Complete   | 2026-05-08 |
 | 3. Remaining Source Adapters | 5/5 | Complete   | 2026-05-09 |
-| 4. Polish & Distribution | 8/8 | Complete   | 2026-05-09 |
+| 4. Polish & Distribution | 8/15 | UAT gaps pending | 2026-05-09 (gap closure in progress) |
