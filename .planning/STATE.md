@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-05-09T16:05:11.983Z"
+last_updated: "2026-05-09T16:22:45.519Z"
 last_activity: 2026-05-09
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 25
-  completed_plans: 24
-  percent: 96
+  completed_plans: 26
+  percent: 100
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 ## Current Position
 
 Phase: 04 (polish-distribution) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 Status: Ready to execute
 Last activity: 2026-05-09
 
-Progress: [██████████] 96%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -70,6 +70,7 @@ Progress: [██████████] 96%
 | Phase 03 P04 | 6min | 2 tasks | 1 files |
 | Phase 04-polish-distribution P01b | 4min | 2 tasks | 3 files |
 | Phase 04 P02 | 7min | 2 tasks | 4 files |
+| Phase 04-polish-distribution P06 | 15 | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,10 @@ Recent decisions affecting current work:
 - [Phase ?]: 04-01b: DiscoveredPaths derives Serialize/Deserialize for Tauri IpcResponse
 - [Phase ?]: 04-01b: pending_update uses tokio::sync::Mutex for async-safe update install across await points
 - [Phase ?]: 04-01b: pubkey=PLACEHOLDER_REPLACE_AT_RELEASE in tauri.conf.json — Plan 04-06 injects real Ed25519 key
+- [Phase 04]: Plan 04-06: Compress-Archive over 7-zip for portable .zip — built into PowerShell 5+, no install step needed on windows-latest
+- [Phase 04]: Plan 04-06: tagName github.ref_name (no custom template) avoids latest.json URL desync (Pitfall 6)
+- [Phase 04]: Plan 04-06: WINDOWS_CERTIFICATE commented in workflow (D-24) — uncomment 2 lines + add 2 repo secrets when cert acquired, no restructuring
+- [Phase 04]: Plan 04-06: Ed25519 keypair one-time-generate: generate locally, paste private key into GitHub Secret, delete local file immediately, commit pubkey only
 
 ### Pending Todos
 
@@ -160,6 +165,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-09T16:05:11.974Z
+Last session: 2026-05-09T16:22:45.510Z
 Stopped at: Phase 4 UI-SPEC approved
 Resume file: None

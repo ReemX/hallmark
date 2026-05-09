@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
  (completed 2026-05-08)
 - [x] **Phase 3: Remaining Source Adapters** - Steam-legit binary VDF adapter, CreamAPI adapter, SmartSteamEmu adapter, cross-source dedup
  (completed 2026-05-09)
-- [ ] **Phase 4: Polish & Distribution** - Test popup trigger, start-with-Windows, NSIS installer, auto-updater, GitHub Actions release pipeline, first-run wizard
+- [x] **Phase 4: Polish & Distribution** - Test popup trigger, start-with-Windows, NSIS installer, auto-updater, GitHub Actions release pipeline, first-run wizard (completed 2026-05-09)
 
 ## Phase Details
 
@@ -92,7 +92,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [x] 04-03-PLAN.md — Test-popup synthetic injector + portable mode detector (POL-01)
   - [x] 04-04-PLAN.md — Settings window + Updater background-check + Update modal in companion (DIST-02)
   - [x] 04-05-PLAN.md — First-run wizard window (DIST-04)
-  - [ ] 04-06-PLAN.md — GitHub Actions release pipeline + portable .zip + Ed25519 keypair generation + README polish (DIST-01, DIST-03)
+  - [x] 04-06-PLAN.md — GitHub Actions release pipeline + portable .zip + Ed25519 keypair generation + README polish (DIST-01, DIST-03)
   - [x] 04-07-PLAN.md — Final SFX assets (procedural via gen_placeholder_sfx.rs retune)
 
 ## Progress
@@ -105,4 +105,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Detection Pipeline Foundation | 5/5 | Complete | 2026-05-08 |
 | 2. Premium UI — Popup, Companion & Game Session | 7/7 | Complete   | 2026-05-08 |
 | 3. Remaining Source Adapters | 5/5 | Complete   | 2026-05-09 |
-| 4. Polish & Distribution | 6/8 | In Progress|  |
+| 4. Polish & Distribution | 8/8 | Complete   | 2026-05-09 |

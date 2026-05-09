@@ -48,7 +48,7 @@
 
 - [x] **DIST-01**: NSIS installer + portable `.zip` build via Tauri bundler — both artifacts produced per release
 - [x] **DIST-02**: Auto-updater wired to GitHub Releases `latest.json` via `tauri-plugin-updater`; user is prompted to install available updates
-- [ ] **DIST-03**: GitHub Actions release workflow (`tauri-action`) builds and attaches installer + portable artifacts on tag push
+- [x] **DIST-03**: GitHub Actions release workflow (`tauri-action`) builds and attaches installer + portable artifacts on tag push
 - [x] **DIST-04**: First-run path-discovery wizard scans for Steam library folders and Goldberg installations and surfaces what was detected (reduces silent zero-popup failure on misconfigured installs)
 
 ## v2 Requirements
@@ -119,7 +119,7 @@
 | POL-02 | Phase 4 | Complete |
 | DIST-01 | Phase 4 | Complete |
 | DIST-02 | Phase 4 | Complete |
-| DIST-03 | Phase 4 | Pending |
+| DIST-03 | Phase 4 | Complete |
 | DIST-04 | Phase 4 | Complete |
 
 **Coverage:**
