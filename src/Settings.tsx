@@ -1,6 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+// Phase 4 gap closure (04-11): shell.open routes external links through the
+// Windows default-browser handler. WebView2 silently blocks plain
+// <a target="_blank"> default-browser navigation.
+import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { SettingsSourceRow } from "./components/SettingsSourceRow";
 import type { DiscoveredPathsView, UpdateInfo } from "./types";
 
@@ -208,6 +212,13 @@ function SettingsRoot() {
             <a
               className="settings-link"
               href="https://github.com/ReemX/hallmark"
+              onClick={(e) => {
+                e.preventDefault();
+                // Silently swallow rejection — capability mismatch should not
+                // crash the UI, just leave the right-click "Copy link"
+                // fallback as the user's recourse.
+                openExternal("https://github.com/ReemX/hallmark").catch(() => {});
+              }}
               target="_blank"
               rel="noreferrer noopener"
             >

@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { invoke } from "@tauri-apps/api/core";
+// Phase 4 gap closure (04-11): shell.open routes the release-notes link
+// through the Windows default browser. WebView2 blocks plain target="_blank".
+import { open as openExternal } from "@tauri-apps/plugin-shell";
 import type { UpdateInfo } from "../types";
 
 interface Props {
@@ -65,6 +68,12 @@ export function UpdateModal({ info, onDismiss }: Props) {
         <a
           className="update-modal-link"
           href={`https://github.com/ReemX/hallmark/releases/tag/v${info.version}`}
+          onClick={(e) => {
+            e.preventDefault();
+            // Silently swallow rejection — capability mismatch should not
+            // crash the modal. Right-click "Copy link" remains as fallback.
+            openExternal(`https://github.com/ReemX/hallmark/releases/tag/v${info.version}`).catch(() => {});
+          }}
           target="_blank"
           rel="noreferrer noopener"
         >
