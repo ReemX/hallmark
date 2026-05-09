@@ -70,6 +70,15 @@ pub mod commands {
         pub pending_update: Arc<tokio::sync::Mutex<Option<tauri_plugin_updater::Update>>>,
         /// Cached DiscoveredPaths from startup — Settings/Wizard rescan replaces this.
         pub cached_discovery: Arc<tokio::sync::RwLock<crate::paths::DiscoveredPaths>>,
+
+        // Phase 4 gap-closure (04-09): WebView-ready handshake. Each Notify is
+        // signalled exactly once when the corresponding window's React tree
+        // mounts and registers its event listeners. Backend tasks awaiting
+        // their first emit call .notified().await on these to avoid the
+        // silent-event-drop race in popup_queue.
+        pub popup_ready: Arc<tokio::sync::Notify>,
+        pub wizard_ready: Arc<tokio::sync::Notify>,
+        pub settings_ready: Arc<tokio::sync::Notify>,
     }
 
     /// Snapshot of one game's companion view: full achievement schema + earned map.
@@ -198,10 +207,87 @@ pub mod commands {
     pub fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
         crate::settings_window::open(&app).map_err(|e| e.to_string())
     }
+
+    /// Ready-handshake from src/main-popup.tsx. Called once after listen() registers.
+    /// popup_queue::run blocks its first emit on this signal so events are not dropped.
+    #[tauri::command]
+    pub fn popup_ready(state: tauri::State<'_, AppState>) -> Result<(), String> {
+        tracing::info!("popup WebView reported ready");
+        state.popup_ready.notify_one();
+        Ok(())
+    }
+
+    /// Ready-handshake from src/FirstRunWizard.tsx (initial useEffect). Called once on mount.
+    #[tauri::command]
+    pub fn wizard_ready(state: tauri::State<'_, AppState>) -> Result<(), String> {
+        tracing::info!("wizard WebView reported ready");
+        state.wizard_ready.notify_one();
+        Ok(())
+    }
+
+    /// Ready-handshake from src/Settings.tsx (initial useEffect). Called once on mount.
+    #[tauri::command]
+    pub fn settings_ready(state: tauri::State<'_, AppState>) -> Result<(), String> {
+        tracing::info!("settings WebView reported ready");
+        state.settings_ready.notify_one();
+        Ok(())
+    }
 }
 
 // Re-export top-level types for Plan 07 convenience.
 pub use commands::{AppState, CompanionState};
+
+/// Wait on a Notify with a timeout. Returns true if signalled, false on timeout.
+/// Used by popup_queue::run (and any future backend task that emits to a
+/// WebView window) to avoid the silent-event-drop race when the frontend
+/// listener hasn't yet registered.
+///
+/// Phase 4 gap closure (04-09): see .planning/debug/webview-warmup-blank-screen.md
+pub async fn wait_for_ready_with_timeout(
+    notify: std::sync::Arc<tokio::sync::Notify>,
+    timeout: std::time::Duration,
+    surface: &'static str,
+) -> bool {
+    match tokio::time::timeout(timeout, notify.notified()).await {
+        Ok(()) => {
+            tracing::info!(surface, "WebView ready handshake completed");
+            true
+        }
+        Err(_) => {
+            tracing::warn!(
+                surface,
+                timeout_ms = timeout.as_millis() as u64,
+                "WebView ready handshake timed out — proceeding anyway"
+            );
+            false
+        }
+    }
+}
+
+#[cfg(test)]
+mod ready_handshake_tests {
+    use super::*;
+    use std::sync::Arc;
+    use std::time::Duration;
+    use tokio::sync::Notify;
+
+    #[tokio::test]
+    async fn ready_signal_resolves_within_timeout() {
+        let n = Arc::new(Notify::new());
+        let n2 = n.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+            n2.notify_one();
+        });
+        assert!(wait_for_ready_with_timeout(n, Duration::from_millis(500), "test").await);
+    }
+
+    #[tokio::test]
+    async fn ready_signal_times_out_when_never_sent() {
+        let n = Arc::new(Notify::new());
+        assert!(!wait_for_ready_with_timeout(n, Duration::from_millis(50), "test").await);
+    }
+}
 
 /// Initialize structured logging. Call once at process start.
 /// Reads RUST_LOG env var; defaults to `hallmark_lib=info,warn` for clean output.
@@ -270,6 +356,10 @@ pub fn run() {
             commands::wizard_dismiss,
             commands::open_settings_window,
             commands::manual_check_update,
+            // Phase 4 gap closure (04-09): WebView ready handshake
+            commands::popup_ready,
+            commands::wizard_ready,
+            commands::settings_ready,
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();
@@ -363,6 +453,16 @@ pub fn run() {
             let pending_update: std::sync::Arc<tokio::sync::Mutex<Option<tauri_plugin_updater::Update>>>
                 = std::sync::Arc::new(tokio::sync::Mutex::new(None));
 
+            // Phase 4 gap closure (04-09): WebView ready handshake. Each Notify is
+            // populated by its corresponding ready command and awaited by the
+            // backend task that produces the window's first event.
+            let popup_ready: std::sync::Arc<tokio::sync::Notify> =
+                std::sync::Arc::new(tokio::sync::Notify::new());
+            let wizard_ready: std::sync::Arc<tokio::sync::Notify> =
+                std::sync::Arc::new(tokio::sync::Notify::new());
+            let settings_ready: std::sync::Arc<tokio::sync::Notify> =
+                std::sync::Arc::new(tokio::sync::Notify::new());
+
             // ----- 10. AppState management -----
             app.manage(AppState {
                 store: store.clone(),
@@ -373,6 +473,9 @@ pub fn run() {
                 silent_launch,
                 pending_update: pending_update.clone(),
                 cached_discovery: cached_discovery.clone(),
+                popup_ready: popup_ready.clone(),
+                wizard_ready: wizard_ready.clone(),
+                settings_ready: settings_ready.clone(),
             });
 
             // Phase 4 D-05: pre-seed schema_cache for the synthetic test popup so the
@@ -404,10 +507,12 @@ pub fn run() {
                 let session_for_queue = session_id.clone();
                 let schema_for_queue = schema_cache.clone();
                 let pid_for_queue = current_pid.clone();
+                let popup_ready_for_queue = popup_ready.clone();
                 tauri::async_runtime::spawn(async move {
                     popup_queue::run(
                         app_for_queue, sink_rx, schema_for_queue, audio_arc,
                         store_for_queue, session_for_queue, pid_for_queue,
+                        popup_ready_for_queue,
                     ).await;
                 });
                 tracing::info!("spawned popup_queue");
