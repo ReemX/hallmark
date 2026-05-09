@@ -1,10 +1,37 @@
 /* Phase 4 settings + first-run wizard + update modal styles. Inherits color/typography tokens from companion.css. */
 
+/* ===== Global reset (Phase 4 gap-closure 04-10).
+ * Mirrors companion.css lines 2-8 + popup.css lines 3-8. settings.css
+ * was the regression — phase 4 added new windows but didn't ship the
+ * reset, contradicting UI-SPEC § Inheritance note.
+ *
+ * Why these specific declarations:
+ *  - margin/padding 0 + height 100% on html/body ensures the body
+ *    element is exactly viewport-sized and doesn't leak the UA white bg
+ *  - background #111114 on body matches the dominant token so any
+ *    pixel that escapes the rounded shell is still on-brand
+ *  - overflow: hidden on body forces inner shell to provide its own
+ *    scroll container — eliminates the OS scrollbar at window edge
+ *  - #root width 100vw + height 100vh gives the shell a bounded box
+ *    so flex:1 + overflow-y:auto inside .settings-body / .wizard-body
+ *    actually engage as scroll viewports
+ */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #111114;
+  color: #F0F0F5;
+  overflow: hidden;
+  font-family: "Inter", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+#root { width: 100vw; height: 100vh; }
+
 /* ===== Settings shell ===== */
 .settings-shell {
   background: #111114;
   color: #F0F0F5;
-  min-height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   font-family: "Inter", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -38,7 +65,7 @@
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 24px;
 }
 .settings-section { display: flex; flex-direction: column; gap: 8px; }
 .settings-section-heading { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.2; }
@@ -79,8 +106,13 @@
 .settings-pill-button:hover:not(:disabled) { border-color: rgba(255, 255, 255, 0.20); }
 .settings-pill-button:disabled { opacity: 0.6; cursor: default; }
 
+/* Phase 4 gap-closure 04-10: dimensions must mirror .source-row exactly
+ * so rescan resolve doesn't produce a row-height jump.
+ * .source-row is { padding: 8px; min-height: 36px; border-radius: 8px }. */
 .skeleton-line {
-  height: 36px;
+  min-height: 36px;
+  padding: 8px;
+  box-sizing: border-box;
   border-radius: 8px;
   background: linear-gradient(90deg, #1C1C21 0%, #2A2A30 50%, #1C1C21 100%);
   background-size: 200% 100%;
@@ -142,7 +174,7 @@
 .wizard-shell {
   background: #111114;
   color: #F0F0F5;
-  min-height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   font-family: "Inter", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -215,3 +247,31 @@
 }
 .wizard-cta-secondary:hover:not(:disabled) { color: #F0F0F5; }
 .wizard-cta-secondary:disabled { opacity: 0.6; cursor: default; }
+
+/* Premium thin scrollbar (Phase 4 gap-closure 04-10). Now that scroll lives
+ * INSIDE the rounded card (height-bound shell), style the WebView2 scrollbar
+ * to match the dark surface. WebKit-prefixed selectors are sufficient since
+ * Tauri ships the Chromium-based WebView2 on Windows. */
+.settings-body::-webkit-scrollbar,
+.wizard-body::-webkit-scrollbar { width: 8px; }
+.settings-body::-webkit-scrollbar-track,
+.wizard-body::-webkit-scrollbar-track { background: transparent; }
+.settings-body::-webkit-scrollbar-thumb,
+.wizard-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.10);
+  border-radius: 4px;
+}
+.settings-body::-webkit-scrollbar-thumb:hover,
+.wizard-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.20);
+}
+
+/* Phase 4 gap-closure 04-10: sticky headers ensure the header stays
+ * visible even if a future content change pushes the body taller than
+ * the viewport. Background is already #111114 so no transparency leak. */
+.settings-header,
+.wizard-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
