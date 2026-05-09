@@ -45,6 +45,14 @@ pub mod commands {
     use std::sync::Arc;
     use serde::{Deserialize, Serialize};
 
+    /// Plain DTO for serializing tauri_plugin_updater::Update info to the React frontend.
+    /// We don't serialize the Update directly because it carries a network handle.
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct UpdateInfoView {
+        pub version: String,
+        pub notes: Option<String>,
+    }
+
     /// Application-wide state shared with Tauri command handlers via `tauri::State`.
     /// Plan 07 constructs this in `setup()` and registers via `app.manage(state)`.
     pub struct AppState {
@@ -130,16 +138,34 @@ pub mod commands {
         Ok(fresh)
     }
 
-    /// D-20: Modal "Install" button. Calls update.download_and_install + app.restart().
-    /// Plan 04-04 finalizes the implementation; this stub returns a clear error
-    /// so the React modal surfaces it instead of hanging.
+    /// D-20: download payload + restart Hallmark process. Hallmark only — never the OS.
     #[tauri::command]
     pub async fn install_pending_update(
         app: tauri::AppHandle,
         state: tauri::State<'_, AppState>,
     ) -> Result<(), String> {
-        let _ = (&app, &state);
-        Err("install_pending_update STUB — Plan 04-04 not yet implemented".into())
+        let update_opt = {
+            let mut guard = state.pending_update.lock().await;
+            guard.take()
+        };
+        let update = update_opt.ok_or_else(|| "no pending update — check for updates first".to_string())?;
+        update.download_and_install(
+            |chunk_length, content_length| {
+                tracing::debug!(chunk_length, ?content_length, "update downloading");
+            },
+            || tracing::info!("update download finished"),
+        ).await.map_err(|e| e.to_string())?;
+        tracing::info!("update installed; restarting Hallmark process");
+        app.restart();
+    }
+
+    /// Settings → "Check for Updates" — synchronous user-triggered check.
+    /// Returns Some(UpdateInfoView) if newer; None if up to date.
+    #[tauri::command]
+    pub async fn manual_check_update(
+        app: tauri::AppHandle,
+    ) -> Result<Option<UpdateInfoView>, String> {
+        crate::updater_glue::manual_check(app).await
     }
 
     /// D-14: Wizard "Get started" / "Continue anyway" — sets first_run_done if any path detected.
@@ -243,6 +269,7 @@ pub fn run() {
             commands::install_pending_update,
             commands::wizard_dismiss,
             commands::open_settings_window,
+            commands::manual_check_update,
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();
