@@ -25,3 +25,7 @@ src/**/*.d.ts
 /gen_sfx.exe
 /gen_sfx
 /gen_sfx.pdb
+# Tauri updater Ed25519 keypair — NEVER commit private key
+/hallmark.key
+/hallmark.key.pub
+*.tauri.key

@@ -31,7 +31,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "PLACEHOLDER_REPLACE_AT_RELEASE",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDkxNDlERDlERUJDREIxQwpSV1FjMjd6ZTJaMFVDZjdiRHNpQ2IzUmIzcVVmQnRhQ0R5bGpKTHlHVnZGTnZsVmorQ1pVYzhUVgo=",
       "endpoints": [
         "https://github.com/ReemX/hallmark/releases/latest/download/latest.json"
       ]
