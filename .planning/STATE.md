@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-05-09T16:22:45.519Z"
+last_updated: "2026-05-09T21:23:05.543Z"
 last_activity: 2026-05-09
 progress:
   total_phases: 4
-  completed_phases: 4
-  total_plans: 25
-  completed_plans: 26
-  percent: 100
+  completed_phases: 3
+  total_plans: 32
+  completed_plans: 28
+  percent: 88
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 ## Current Position
 
 Phase: 04 (polish-distribution) — EXECUTING
-Plan: 6 of 8
+Plan: 2 of 13
 Status: Ready to execute
 Last activity: 2026-05-09
 
-Progress: [██████████] 100%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -71,6 +71,7 @@ Progress: [██████████] 100%
 | Phase 04-polish-distribution P01b | 4min | 2 tasks | 3 files |
 | Phase 04 P02 | 7min | 2 tasks | 4 files |
 | Phase 04-polish-distribution P06 | 15 | 3 tasks | 6 files |
+| Phase 04 P08 | 4min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -147,6 +148,8 @@ Recent decisions affecting current work:
 - [Phase 04]: Plan 04-06: tagName github.ref_name (no custom template) avoids latest.json URL desync (Pitfall 6)
 - [Phase 04]: Plan 04-06: WINDOWS_CERTIFICATE commented in workflow (D-24) — uncomment 2 lines + add 2 repo secrets when cert acquired, no restructuring
 - [Phase 04]: Plan 04-06: Ed25519 keypair one-time-generate: generate locally, paste private key into GitHub Secret, delete local file immediately, commit pubkey only
+- [Phase ?]: 04-08: Option-1 (timestamp-suffix synthetic api_name) over Option-2 (drop UNIQUE INDEX) — preserves production dedup for real achievements
+- [Phase ?]: 04-08: Reserved-prefix convention HALLMARK_TEST_UNLOCK_ — popup_queue substitutes canonical UI-SPEC fixture copy on schema_cache miss for the synthetic prefix
 
 ### Pending Todos
 
@@ -165,6 +168,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-09T16:22:45.510Z
+Last session: 2026-05-09T21:23:05.534Z
 Stopped at: Phase 4 UI-SPEC approved
 Resume file: None
