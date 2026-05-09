@@ -179,8 +179,9 @@ gap_entries: 12
     - "src-tauri/icons/icon.ico — byte-identical placeholder (will render same in NSIS-installed binary)"
     - ".planning/phases/04-polish-distribution/04-CONTEXT.md:28-38 — D-01 spec contradiction with UAT test 2"
   missing:
-    - "Spec reconciliation: pick 'no header' OR 'header' and converge 04-CONTEXT D-01 + tray.rs + 04-UAT test 2 expectation"
+    - "DECISION (2026-05-09 user pick during UAT diagnosis): DROP the Hallmark header. Update 04-CONTEXT.md D-01 (lines 28-38) to remove the header and the leading separator; tray.rs deletes lines 62, 71, 78 (`&header,` and `&sep1,` from items array), and the dead 'header' arm at lines 151-153; doc comment lines 3-14 update accordingly. UAT test 2 expectation already matches this layout."
     - "Real multi-resolution ICO with non-zero alpha at 16x16 + 32x32 minimum (e.g., `magick convert glyph.png -define icon:auto-resize=256,128,64,48,32,24,16 tray.ico`) for BOTH tray.ico AND icon.ico"
+  decision: "Drop header (user pick during UAT 2026-05-09); supersedes original D-01 lock"
   debug_session: .planning/debug/tray-menu-extra-header-and-black-icon.md
 
 - truth: "Companion window header drag region covers all non-button header pixels and reliably grabs the window for dragging"
