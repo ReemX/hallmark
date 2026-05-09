@@ -1,9 +1,18 @@
 ---
-status: partial
+status: diagnosed
 phase: 04-polish-distribution
 source: [04-01a-SUMMARY.md, 04-01b-SUMMARY.md, 04-02-SUMMARY.md, 04-03-SUMMARY.md, 04-04-SUMMARY.md, 04-05-SUMMARY.md, 04-06-SUMMARY.md, 04-07-SUMMARY.md]
 started: 2026-05-09T00:00:00Z
-updated: 2026-05-09T20:30:00Z
+updated: 2026-05-09T21:15:00Z
+diagnosis_complete: 2026-05-09T21:15:00Z
+debug_sessions:
+  - .planning/debug/popup-repeat-fire-stuck.md
+  - .planning/debug/webview-warmup-blank-screen.md
+  - .planning/debug/settings-wizard-css-surface-regression.md
+  - .planning/debug/drag-region-undersized.md
+  - .planning/debug/tray-menu-extra-header-and-black-icon.md
+  - .planning/debug/github-link-dead.md
+  - .planning/debug/updates-error-wording-misleading.md
 ---
 
 ## Current Test
@@ -152,97 +161,196 @@ gap_entries: 12
 ## Gaps
 
 - truth: "Tray menu matches D-01 locked spec exactly (Show companion / Fire test popup / Settings / Start with Windows / Quit) and tray icon renders as a recognizable Hallmark glyph"
-  status: failed
-  reason: "User reported: Menu shows 'Hallmark' (greyed disabled title) at top, then Show companion / Fire test popup / sep / Settings... / Start with Windows / sep / Quit. Two issues: (1) extra 'Hallmark' header item not in D-01 spec — likely auto-injected by tauri tray menu builder; (2) tray icon itself renders as a solid black box on the taskbar — `tray.ico` is the v1 fallback copy of `icon.ico` per 04-02 SUMMARY; the proper monochrome glyph swap was never landed (04-07 turned out to be SFX-only)."
+  status: diagnosed
+  reason: "User reported: Menu shows 'Hallmark' (greyed disabled title) at top + tray icon renders as a solid black box."
   severity: minor
   test: 2
-  artifacts: []
-  missing: []
+  root_cause: |
+    TWO sub-defects with separate root causes:
+    (1) Hallmark header is HAND-CODED in tray.rs — line 62 `MenuItem::with_id(app, "header", "Hallmark", false, ...)`, line 77 places it first in the items array, lines 151-153 handle the dead branch. NOT auto-injected by Tauri. UNDERLYING SPEC CONFLICT: 04-CONTEXT.md D-01 (lines 28-38) actually MANDATES the header — but 04-UAT test 2 expectation and the user's reading both say no header. Spec reconciliation needed before code change. Recommended decision: drop the header (matches user expectation + Discord/Slack/Steam conventions; tooltip already provides identification on hover).
+    (2) tray.ico (and icon.ico — byte-identical) is a fully-transparent 6-frame placeholder ICO from Phase 1 commit 452d29b explicitly labeled 'replaced when real artwork lands'. ICO binary parse: 16x16/32x32/etc. all alpha=0 + AND mask all zeros → legacy GDI tray-icon host renders as solid 16×16 black square. icon.ico LOOKS fine in dev because dev mode uses Chromium default for window chrome; only tray.ico hits a real renderer in dev (via include_bytes!). Phase 04-07 was supposed to land real artwork but pivoted to SFX-only.
+  artifacts:
+    - "src-tauri/src/tray.rs:62 — hand-coded Hallmark header MenuItem"
+    - "src-tauri/src/tray.rs:71 — sep1 separator (only meaningful with header)"
+    - "src-tauri/src/tray.rs:77-78 — &header, &sep1 in items array"
+    - "src-tauri/src/tray.rs:151-153 — dead 'header' arm in handle_menu_event"
+    - "src-tauri/src/tray.rs:3-14 — doc comment lists header in menu spec"
+    - "src-tauri/icons/tray.ico — fully-transparent 6-frame placeholder, all pixels alpha=0"
+    - "src-tauri/icons/icon.ico — byte-identical placeholder (will render same in NSIS-installed binary)"
+    - ".planning/phases/04-polish-distribution/04-CONTEXT.md:28-38 — D-01 spec contradiction with UAT test 2"
+  missing:
+    - "Spec reconciliation: pick 'no header' OR 'header' and converge 04-CONTEXT D-01 + tray.rs + 04-UAT test 2 expectation"
+    - "Real multi-resolution ICO with non-zero alpha at 16x16 + 32x32 minimum (e.g., `magick convert glyph.png -define icon:auto-resize=256,128,64,48,32,24,16 tray.ico`) for BOTH tray.ico AND icon.ico"
+  debug_session: .planning/debug/tray-menu-extra-header-and-black-icon.md
 
 - truth: "Companion window header drag region covers all non-button header pixels and reliably grabs the window for dragging"
-  status: failed
-  reason: "User reported: 'top area for dragging is kinda flaky, maybe too small, not all areas I grab in header work'. Companion header drag region is undersized / inconsistent — `data-tauri-drag-region` may be on a child element rather than the full 48px header strip, or close button hit area is encroaching on draggable surface."
+  status: diagnosed
+  reason: "Drag works only in flex gaps; title text + badge pixels do not drag."
   severity: minor
   test: 3
-  artifacts: ["src/main-companion.tsx", "src/styles/companion.css"]
-  missing: []
+  root_cause: |
+    Tauri 2's `data-tauri-drag-region` is per-element (NOT inherited). In CompanionHeader.tsx, the attribute is only on the outer <header>; the title <div> (`flex: 1`, covers most of header width) and the badge <div> are siblings without the attribute, so clicks on them hit the child and never register as drag. The empty flex-gap pixels between siblings fall directly on the parent header — the only draggable surface. No CSS pointer-events override, no -webkit-app-region remnant; pure markup omission.
+  artifacts:
+    - "src/components/CompanionHeader.tsx:6 — title <div> missing data-tauri-drag-region"
+    - "src/components/CompanionHeader.tsx:8 — badge <div> missing data-tauri-drag-region"
+  missing:
+    - "Add data-tauri-drag-region to companion title <div> and badge <div>"
+  debug_session: .planning/debug/drag-region-undersized.md
 
 - truth: "Test popup fires reliably on every tray click after the first one (POL-01)"
-  status: failed
-  reason: "After first successful popup, subsequent test_trigger::fire calls (>60s later, past 10s dedup TTL) log only 'test popup fired (synthetic event injected at adapter→dedup boundary)' with NO subsequent UNLOCK or POPUP_FIRED log line — popup never re-renders. Likely cause: popup_queue consumer stuck (B-2 select! drain may be deadlocked after first hide) OR run_pipeline receiver dropped OR popup window state stuck between hidden/shown."
+  status: diagnosed
+  reason: "Repeat test_trigger::fire calls past dedup TTL produce no UNLOCK or POPUP_FIRED log line."
   severity: major
   test: 4
-  artifacts: ["src-tauri/src/popup_queue.rs", "src-tauri/src/test_trigger.rs", "src-tauri/src/lib.rs (run_pipeline)", "src-tauri/src/ui.rs (popup window hide/show)"]
-  missing: []
+  root_cause: |
+    SQLite UNIQUE INDEX `idx_unlock_dedup ON unlock_history(app_id, ach_api_name, session_id)` is a SECOND dedup layer beyond the in-memory 10s CrossSourceDedup. test_trigger::fire always synthesizes the same `(480, HALLMARK_TEST_UNLOCK)` pair; session_id is constant for the process lifetime (lib.rs:286-289). After in-memory dedup expires (10s TTL works correctly), the event reaches `record_unlock` which uses INSERT OR IGNORE → returns Ok(false) → run_pipeline silently `continue`s without logging UNLOCK and without forwarding to sink_tx. Drop is INVISIBLE because both silent-drop arms in run_pipeline use `tracing::debug!`, below the default `RUST_LOG=hallmark_lib=info,warn` filter. UNIQUE INDEX is correct for real achievements (re-firing same achievement in one session is duplicate worth suppressing) but wrong for synthetic test trigger that intentionally re-uses the key. Phase 04-03 threat model considered only the in-memory TTL (T-04-13) — DB UNIQUE INDEX layer was not factored in.
+  artifacts:
+    - "src-tauri/src/watcher/mod.rs:387-394 — run_pipeline `!inserted` branch logs at debug! and silently `continue`s"
+    - "src-tauri/src/store/mod.rs:58-84 — record_unlock uses INSERT OR IGNORE, returns Ok(false) on collision"
+    - "src-tauri/src/store/migrations/001_initial.sql:24-25 — defines idx_unlock_dedup UNIQUE on (app_id, ach_api_name, session_id)"
+    - "src-tauri/src/test_trigger.rs:32-65 — fire() reuses the same (480, HALLMARK_TEST_UNLOCK) pair on every click"
+    - "src-tauri/src/lib.rs:286-289 — session_id generated once at startup, constant for process lifetime"
+  missing:
+    - "Recommended (Option 1): timestamp-suffix the test trigger's ach_api_name in test_trigger::fire (e.g., format!(\"HALLMARK_TEST_UNLOCK_{}\", timestamp)) so each fire has unique key, no UNIQUE INDEX collision; popup_queue.rs:135-137 has display_name fallback so popup still renders 'Test Achievement' if schema fixture lookup adapts (or substitute display_name when api_name starts with 'HALLMARK_TEST_UNLOCK_')"
+    - "Secondary observability fix (separate task): promote run_pipeline silent debug! drops to info! or add metrics — current behavior also silently swallows production scenarios (process restart re-emitting same achievement, cross-source race within 10s window)"
+  debug_session: .planning/debug/popup-repeat-fire-stuck.md
 
 - truth: "UI is interactive within ~1 second of cargo tauri dev launch — achievements that fire during early startup render visibly (not just SFX)"
-  status: failed
-  reason: "User reports ~20-second UI warmup gap after `cargo tauri dev` launch. Achievements fired during this window play SFX but the popup window never paints — sound-only state. Logs do not surface a 'WebView ready' / 'frontend mounted' marker, so the gap is invisible from Rust side. Production NSIS-installed binary may exhibit different timing (no Vite dev server overhead) but this is unverified."
+  status: diagnosed
+  reason: "WebView windows blank for ~20s after cargo tauri dev launch; SFX plays but popup never paints if fired during gap."
   severity: major
   test: 4
-  artifacts: ["src-tauri/src/ui.rs", "src/main-popup.tsx", "vite.config.ts"]
-  missing: ["frontend-ready ack from popup WebView back to Rust before popup_queue starts firing"]
+  root_cause: |
+    Two compounding mechanisms:
+    (A) Vite multi-entry cold-transform bottleneck (DEV-ONLY): vite.config.ts has 4 rollup inputs (companion/popup/settings/wizard) but NO `optimizeDeps.entries`. Vite's esbuild pre-bundle only auto-discovers from index.html (default entry). When WebView2 fetches /popup.html or /wizard.html, Vite must lazily transform main-popup.tsx / main-wizard.tsx + walk full import graph (React 19, Framer Motion, @tauri-apps/api/*, components, CSS) — cold round-trip 10-30+ seconds. Documented Tauri v2 + Vite dev behavior (issues #12742, #8920, #6045, #5170, #13017).
+    (B) Missing WebView-ready handshake (PRESENT IN BOTH DEV AND PROD): popup_queue::process_event (popup_queue.rs:161-170) calls popup.show() → app.emit_to('popup', 'popup-show', payload) → audio.play() with NO await for frontend-mounted ack. Tauri events do NOT buffer for listeners that attach after emit — if process_event runs before main-popup.tsx's useEffect registers listen('popup-show'), event is silently dropped. Audio.play succeeds because rodio is independent of WebView state — this is exactly the 'SFX without popup' pattern. In prod the race window is ~500ms (mostly imperceptible); in dev mechanism (A) widens it to 20s+ which makes (B) reliably reproducible.
+    Production confirmation: dist/assets/ contains pre-built bundles (popup-BGd0qpbs.js, wizard-CnNnpB7X.js, etc.); cargo tauri build skips Vite entirely. UAT test 19 confirmed prod build is healthy at 5.1 MB. Mechanism (A) does NOT reproduce in prod; mechanism (B) does (but is invisible to user at sub-second scale).
+  artifacts:
+    - "vite.config.ts — 4-entry rollup config without optimizeDeps.entries (mechanism A)"
+    - "src-tauri/src/popup_queue.rs:161-170 — process_event fire-and-forget emit_to (mechanism B)"
+    - "src-tauri/src/popup_queue.rs:222-227 — emit_celebration same fire-and-forget pattern"
+    - "src/main-popup.tsx:11-19 — useEffect registers listen() but emits no ready-ack"
+  missing:
+    - "Mechanism A fix: add `optimizeDeps: { entries: ['index.html', 'popup.html', 'settings.html', 'wizard.html'], include: ['react', 'react-dom', 'react-dom/client', 'framer-motion', '@tauri-apps/api/core', '@tauri-apps/api/event'] }` to vite.config.ts — expected dev startup 20s → 2-5s"
+    - "Mechanism B fix: WebView-ready handshake — frontend invokes a `popup_ready` Tauri command from useEffect after listen() registers; popup_queue::run blocks first emit on a tokio::sync::Notify populated by the command. Apply same pattern to wizard."
+  debug_session: .planning/debug/webview-warmup-blank-screen.md
 
 - truth: "App quits cleanly without Chromium teardown errors"
-  status: failed
-  reason: "On Quit, Chromium emits `[ERROR:ui\\gfx\\win\\window_impl.cc:134] Failed to unregister class Chrome_WidgetWin_0. Error = 1412` (ERROR_CLASS_DOES_NOT_EXIST). App does exit per Quit-drain logs, so this is cosmetic stderr noise, but it is an ERROR-level line on every clean Quit."
+  status: deferred
+  reason: "On Quit, Chromium emits `[ERROR:ui\\gfx\\win\\window_impl.cc:134] Failed to unregister class Chrome_WidgetWin_0. Error = 1412` — cosmetic stderr noise from WebView2 teardown ordering. App exits cleanly per Quit-drain logs."
   severity: cosmetic
   test: 4
-  artifacts: ["src-tauri/src/tray.rs (initiate_quit)", "src-tauri/src/lib.rs (window teardown order)"]
-  missing: []
+  root_cause: "Not investigated — flagged as obvious WebView2/Chromium teardown noise (ERROR_CLASS_DOES_NOT_EXIST = 1412 emitted when Chromium tries to unregister the window class twice during shutdown). Known Tauri v2 + WebView2 stderr artifact unrelated to app correctness."
+  artifacts:
+    - "Cosmetic only — app exit semantics correct per Quit-drain logs"
+  missing:
+    - "Defer to v1.1 — not worth a fix slot in Phase 4 polish (cosmetic stderr only, no user-visible impact)"
+  debug_session: not-investigated
 
 - truth: "Settings window has fully styled premium dark surface — no OS background bleed, no light body background, scrollbar styled or hidden inside the rounded card"
-  status: failed
-  reason: "Native OS scrollbar renders OUTSIDE the rounded dark card on the right edge. The area beyond the card is the unstyled default browser/WebView light background, breaking the premium feel that defines the product. html/body element is not set to the dark surface color, OR `.settings-shell` is sized smaller than viewport with padding around it, OR `overflow` lives on body instead of `.settings-body` so OS scrollbar shows in the chromeless gap."
+  status: diagnosed
+  reason: "Native OS scrollbar OUTSIDE rounded card; off-white body background bleeds through padding."
   severity: major
   test: 6
-  artifacts: ["src/styles/settings.css", "settings.html", "src/main-settings.tsx"]
-  missing: ["html/body { background: var(--surface-base); margin: 0; height: 100% } reset", "scrollbar styling (custom thin scrollbar inside .settings-body) OR overflow moved off body"]
+  root_cause: |
+    Single missing CSS reset is the upstream cause of all 5 sub-symptoms (this gap + skeleton mismatch + layout density + wizard premium-feel regression + non-sticky wizard header). companion.css (lines 2-6) and popup.css (lines 3-8) both ship a global `html, body, #root` reset; settings.css does NOT. Without it: (1) body has UA-default white bg + 8px margin → off-white bleed around the rounded card; (2) `.settings-shell` and `.wizard-shell` use `min-height: 100vh` instead of `height: 100%`, so inner `.settings-body { flex: 1; overflow-y: auto }` never gets a bounded height — overflow propagates to body, producing the OS scrollbar at the WINDOW edge (outside the rounded card); (3) wizard header is a flex child of the broken scroll context and scrolls along with body; (4) `.skeleton-line` is 36px no padding while `.source-row` has min-height 36px + 8px padding → ~37-52px effective → row-height jump on rescan resolve; (5) `.settings-body` 32px section gap + body-level scroll bug pushes content below the fold. UI-SPEC.md line 17 explicitly required Phase 4 surfaces to inherit Phase 2's design language — this regression breaches that contract.
+  artifacts:
+    - "src/styles/settings.css — entire file is the locus of the fix (no html/body/#root reset; min-height on shells; skeleton-line dim mismatch; oversized section gap)"
+    - "src/styles/companion.css:2-8 — REFERENCE PATTERN to mirror"
+    - "src/styles/popup.css:3-8 — secondary reference confirming the same pattern"
+  missing:
+    - "Add to top of settings.css: `html, body { margin: 0; padding: 0; height: 100%; background: #111114; color: #F0F0F5; overflow: hidden; font-family: 'Inter', 'Segoe UI Variable', 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif; } #root { width: 100vw; height: 100vh; }`"
+    - "Change `.settings-shell` and `.wizard-shell` from `min-height: 100vh` to `height: 100%`"
+    - "Add `::-webkit-scrollbar` styling on `.settings-body` and `.wizard-body` (8px, dark thumb rgba(255,255,255,0.10)) for premium feel"
+    - "Change `.skeleton-line { height: 36px; ... }` to `min-height: 36px; padding: 8px; box-sizing: border-box; border-radius: 8px;` (mirror .source-row)"
+    - "Tighten `.settings-body` section gap 32px → 24px (UI-SPEC 'lg' token)"
+    - "Optional: `.wizard-header, .settings-header { position: sticky; top: 0; z-index: 1; }` (backgrounds already #111114)"
+  debug_session: .planning/debug/settings-wizard-css-surface-regression.md
 
 - truth: "View on GitHub link in Settings About panel opens https://github.com/ReemX/hallmark in the default browser"
-  status: failed
-  reason: "Clicking 'View on GitHub' link does nothing. Tauri WebViews block plain `<a href target=_blank>` navigation by default — must invoke `@tauri-apps/plugin-shell` `open(url)` from an onClick handler, or configure the shell-open capability."
+  status: diagnosed
+  reason: "Clicking 'View on GitHub' does nothing — Tauri WebView2 silently blocks default browser navigation."
   severity: major
   test: 6
-  artifacts: ["src/Settings.tsx (About section)", "src-tauri/capabilities/settings.json", "package.json (@tauri-apps/plugin-shell)"]
-  missing: ["tauri-plugin-shell wired in builder + capability + onClick → invoke('plugin:shell|open', { path: 'https://github.com/ReemX/hallmark' })"]
+  root_cause: |
+    All 5 wiring steps for tauri-plugin-shell are absent. This is a net-new feature, not a regression — the plugin has never been installed. BONUS: src/components/UpdateModal.tsx:65-72 has a SECOND dead link with the identical broken pattern ('Read full release notes on GitHub' → tag URL); single fix covers both call sites.
+  artifacts:
+    - "src/Settings.tsx:205-212 — <a href target='_blank'> with no onClick handler"
+    - "src/components/UpdateModal.tsx:65-72 — same broken pattern (second dead link, same fix)"
+    - "package.json — missing @tauri-apps/plugin-shell"
+    - "src-tauri/Cargo.toml — missing tauri-plugin-shell"
+    - "src-tauri/src/lib.rs — Builder doesn't register tauri_plugin_shell::init()"
+    - "src-tauri/capabilities/settings.json — missing shell:allow-open with URL allowlist"
+  missing:
+    - "Cargo.toml: add `tauri-plugin-shell = \"2\"`"
+    - "package.json: add `\"@tauri-apps/plugin-shell\": \"^2\"`"
+    - "lib.rs Builder: `.plugin(tauri_plugin_shell::init())`"
+    - "settings.json capability: `shell:allow-open` scoped to https://github.com/ReemX/hallmark + https://github.com/ReemX/hallmark/releases/tag/* (least-privilege URL allowlist — UpdateModal renders inside Settings window, so settings.json covers both call sites)"
+    - "Frontend: import { open } from '@tauri-apps/plugin-shell'; replace bare <a> with `<a onClick={(e) => { e.preventDefault(); open(url).catch(() => {}); }}>` in Settings.tsx + UpdateModal.tsx — keep href for right-click 'Copy link' UX"
+  debug_session: .planning/debug/github-link-dead.md
 
 - truth: "Settings header drag region covers the full 48px header strip including the 'Settings' title text"
-  status: failed
-  reason: "User reports drag works on most of header but NOT on the 'Settings' title text itself — same drag-region partial-failure pattern as the companion window. `data-tauri-drag-region` is likely on a sibling element, not on the title text or its parent."
+  status: diagnosed
+  reason: "Title text 'Settings' not draggable; chrome around it is."
   severity: minor
   test: 6
-  artifacts: ["src/Settings.tsx (header)", "src/styles/settings.css (.settings-header)"]
-  missing: []
+  root_cause: "Same root cause as companion drag-region (gap test 3): `data-tauri-drag-region` is per-element, NOT inherited. Settings.tsx:119-128 has the attribute on `<div className=\"settings-header\">` but the inner `<span className=\"settings-title\">` (line 120) lacks it. With justify-content: space-between, the only directly-hit parent pixels are the gap between title and close button. Title <span> intercepts pointer events without inheriting drag."
+  artifacts:
+    - "src/Settings.tsx:120 — settings-title <span> missing data-tauri-drag-region"
+  missing:
+    - "Add data-tauri-drag-region to the settings-title <span> (close <button> remains auto-excluded by Tauri's interactive-element rule). Total fix across both drag-region gaps: 3 attribute additions in 2 files (CompanionHeader.tsx title + badge, Settings.tsx title)"
+  debug_session: .planning/debug/drag-region-undersized.md
 
 - truth: "Settings layout uses horizontal space efficiently — content fits without vertical scrolling on the fixed 520x580 window"
-  status: failed
-  reason: "Content overflows the 520×580 viewport — user must scroll vertically to reach the About section. Horizontal space is under-used (rows are narrow). Increase row width / reduce vertical padding / or tighten section spacing so all 3 sections fit without scroll."
+  status: diagnosed
+  reason: "Content overflows 520×580 viewport, forcing vertical scroll to reach About."
   severity: minor
   test: 6
-  artifacts: ["src/styles/settings.css (.settings-shell, .settings-section, .source-row spacing)"]
-  missing: []
+  root_cause: "Combined cause: (a) the broken body-level scroll bug (see CSS-surface gap above) steals visible horizontal real estate by spawning the OS scrollbar at window edge; (b) `.settings-body` uses 32px section gap (one tier too large for the 580px height with 3 sections + headers + skeleton state). Both are addressed by the single CSS-surface fix."
+  artifacts:
+    - "src/styles/settings.css — .settings-body gap: 32px → 24px (UI-SPEC 'lg' token)"
+  missing:
+    - "Covered by the CSS-surface fix (skeleton rebuilt, scroll containment, section gap tightened in same patch). No separate work item."
+  debug_session: .planning/debug/settings-wizard-css-surface-regression.md
 
 - truth: "Skeleton placeholder rows in Detected Sources panel match the height of rendered SettingsSourceRow entries — no layout jump when scan completes"
-  status: failed
-  reason: "User reports the skeleton flashes for ~50ms then content snaps in with a visible vertical jump. Skeleton lines are shorter / shorter-padding than the real source rows, so when the rescan_paths promise resolves the rows expand and shift the rest of the panel down. Either match skeleton row dimensions to SettingsSourceRow exactly, OR hold the skeleton minimum visible duration to ~250ms so the user perceives intent rather than a glitch."
+  status: diagnosed
+  reason: "~50ms skeleton flash + visible vertical jump on rescan resolve."
   severity: minor
   test: 7
-  artifacts: ["src/Settings.tsx (skeleton rendering)", "src/styles/settings.css (.skeleton-line / .source-row dimensions)"]
-  missing: []
+  root_cause: "`.skeleton-line { height: 36px }` (no padding/box-sizing) vs `.source-row { min-height: 36px; padding: 8px }` (~37-52px effective). Pure CSS dim mismatch. Covered by the CSS-surface fix above."
+  artifacts:
+    - "src/styles/settings.css — .skeleton-line dimensions need to mirror .source-row exactly"
+  missing:
+    - "Covered by CSS-surface fix: change .skeleton-line to `min-height: 36px; padding: 8px; box-sizing: border-box; border-radius: 8px;` (mirror .source-row). No separate work item."
+  debug_session: .planning/debug/settings-wizard-css-surface-regression.md
 
 - truth: "Updates panel error message accurately describes the failure cause — distinguishes 404/no-release from genuine network failure"
-  status: failed
-  reason: "Manual check displays 'Couldn't reach the update server. Check your connection.' when in fact the user's connection is fine; latest.json simply does not exist on GitHub Releases yet (no v0.1.x tagged). The Tauri updater plugin returns the same generic Error for both 404 and network failure; frontend should branch on the underlying status code or treat 'no release at all' as the implicit `uptodate` outcome (current installed version is presumably the latest if no release exists)."
+  status: diagnosed
+  reason: "404 (no release published) shows 'check your connection' copy meant for offline."
   severity: minor
   test: 9
-  artifacts: ["src/Settings.tsx (Updates section state machine)", "src-tauri/src/updater_glue.rs (manual_check error mapping)"]
-  missing: []
+  root_cause: |
+    Two-place bug. (1) tauri-plugin-updater 2.10 ALREADY distinguishes the two cases at the source level: `Error::ReleaseNotFound` for non-2xx HTTP status (the 404 path — confirmed by the WARN log line `error=Could not fetch a valid release JSON from the remote` which is the Display impl of that variant) vs `Error::Reqwest(reqwest::Error)` for transport failure (DNS/TCP/TLS/timeout). Other relevant variants: EmptyEndpoints, TargetNotFound, TargetsNotFound, Serialization, InsecureTransportProtocol. (2) src-tauri/src/updater_glue.rs:61 discards that structure: `updater.check().await.map_err(|e| e.to_string())?`. Then src/Settings.tsx:180-182 hardcodes a literal offline-themed string and never reads UpdateState.error.message anyway — even if backend preserved the message, frontend would still show 'check your connection.'
+  artifacts:
+    - "src-tauri/src/updater_glue.rs:59-75 — manual_check flattens Error enum to String via e.to_string()"
+    - "src-tauri/src/lib.rs:50-54, 164-169 — UpdateInfoView only carries success metadata; manual_check_update returns Result<Option<UpdateInfoView>, String>"
+    - "src/Settings.tsx:54-59 — UpdateState union collapses all errors into one variant"
+    - "src/Settings.tsx:180-182 — hardcoded 'Couldn't reach the update server' copy"
+  missing:
+    - "Backend (~30 lines Rust): add tagged enum CheckOutcome { Available { version, notes }, UpToDate, NoReleaseYet, Offline { detail }, PlatformMissing { detail }, OtherError { detail } } with serde(tag='status', rename_all='snake_case'). In updater_glue::manual_check, replace `.map_err(|e| e.to_string())?` with a `match` on tauri_plugin_updater::Error variants. For NoReleaseYet, still call persist_last_checked (treat as successful 'checked' event for UX freshness)."
+    - "Frontend (~25 lines TSX): extend UpdateState with kind: 'no_release' | 'offline' | 'platform_missing' | 'other_error'. Switch handleCheckUpdates to read result.status. Render copy per kind: no_release → 'No releases yet — Hallmark is on its first version. We will show new versions here when they arrive.' (also persist 'Last checked: just now'); offline → keep current copy; platform_missing → 'An update was found but does not support your platform.'; other_error → `Update check failed: ${detail}` (use the message)."
+    - "Apply same Error mapping inside spawn_background_check so logs differentiate info!('no release published yet') from warn!('update check failed: offline')"
+  debug_session: .planning/debug/updates-error-wording-misleading.md
 
 - truth: "Wizard window has fully styled premium dark surface with confined scrollbar — same fix as Settings (no body bg bleed, no OS scrollbar outside card, sticky header)"
-  status: failed
-  reason: "Same html/body bg + scrollbar pattern as Settings (test 6) reproduces in wizard window. Plus: wizard header is not sticky (should pin while body scrolls). Both surfaces share `settings.css`, so a single fix on body/html reset + .wizard-shell overflow + position-sticky on .wizard-header should resolve both."
+  status: diagnosed
+  reason: "Same scrollbar/bg/non-sticky-header issues as Settings."
   severity: major
   test: 14
-  artifacts: ["src/styles/settings.css (.wizard-shell, .wizard-header)", "wizard.html", "src/main-wizard.tsx"]
-  missing: ["html/body dark bg reset", "scroll container scoped to .wizard-body", "position: sticky on .wizard-header"]
+  root_cause: "Same root cause as the Settings CSS-surface gap (test 6): missing html/body/#root reset in settings.css, min-height-instead-of-height on shells, no scrollbar styling, no sticky header rule. Wizard imports the same settings.css so a single coordinated patch covers both windows."
+  artifacts:
+    - "src/styles/settings.css — .wizard-shell + .wizard-header receive the same fix as .settings-shell + .settings-header"
+  missing:
+    - "Covered by the CSS-surface fix above. No separate work item — single PR addresses both windows."
+  debug_session: .planning/debug/settings-wizard-css-surface-regression.md
