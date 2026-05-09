@@ -91,7 +91,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [x] 04-02-PLAN.md — Tray icon + autostart (HKCU\Run via winreg) + Quit-with-drain (POL-02 surface)
   - [x] 04-03-PLAN.md — Test-popup synthetic injector + portable mode detector (POL-01)
   - [x] 04-04-PLAN.md — Settings window + Updater background-check + Update modal in companion (DIST-02)
-  - [ ] 04-05-PLAN.md — First-run wizard window (DIST-04)
+  - [x] 04-05-PLAN.md — First-run wizard window (DIST-04)
   - [ ] 04-06-PLAN.md — GitHub Actions release pipeline + portable .zip + Ed25519 keypair generation + README polish (DIST-01, DIST-03)
   - [x] 04-07-PLAN.md — Final SFX assets (procedural via gen_placeholder_sfx.rs retune)
 
