@@ -98,7 +98,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [x] 04-08-PLAN.md — Gap closure: test_trigger timestamp-suffixed api_name + popup_queue display fallback (UAT test 4 root cause #1)
   - [x] 04-09-PLAN.md — Gap closure: Vite optimizeDeps + WebView ready handshake (popup_ready / wizard_ready / settings_ready Notify gates) (UAT test 4 root cause #2 + test 14 #1)
   - [x] 04-10-PLAN.md — Gap closure: settings.css surface regression patch (reset, scroll containment, sticky header, skeleton mirror, scrollbar styling) + 3 drag-region attribute additions (UAT tests 3, 6, 7, 14)
-  - [ ] 04-11-PLAN.md — Gap closure: tauri-plugin-shell wiring (Cargo + npm + Builder + capability least-privilege allowlist + Settings/UpdateModal openExternal) (UAT test 6 dead links)
+  - [x] 04-11-PLAN.md — Gap closure: tauri-plugin-shell wiring (Cargo + npm + Builder + capability least-privilege allowlist + Settings/UpdateModal openExternal) (UAT test 6 dead links)
   - [ ] 04-12-PLAN.md — Gap closure: CheckOutcome tagged enum (no_release / offline / platform_missing / other_error) — Settings Updates panel error wording (UAT test 9)
   - [x] 04-13a-PLAN.md — Gap closure: tray.rs Hallmark header drop + 04-CONTEXT D-01 amendment (UAT test 2 root cause #1; autonomous, wave 1)
   - [x] 04-13b-PLAN.md — Gap closure: tray.ico/icon.ico real artwork (UAT test 2 root cause #2; human-action checkpoint, wave 1)
