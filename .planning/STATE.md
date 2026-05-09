@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-05-09T21:23:05.543Z"
+last_updated: "2026-05-09T21:32:23.155Z"
 last_activity: 2026-05-09
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 32
-  completed_plans: 28
-  percent: 88
+  completed_plans: 30
+  percent: 94
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 ## Current Position
 
 Phase: 04 (polish-distribution) — EXECUTING
-Plan: 2 of 13
+Plan: 3 of 13
 Status: Ready to execute
 Last activity: 2026-05-09
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -72,6 +72,7 @@ Progress: [█████████░] 88%
 | Phase 04 P02 | 7min | 2 tasks | 4 files |
 | Phase 04-polish-distribution P06 | 15 | 3 tasks | 6 files |
 | Phase 04 P08 | 4min | 3 tasks | 2 files |
+| Phase 04 P09 | 4min | 5 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -150,6 +151,8 @@ Recent decisions affecting current work:
 - [Phase 04]: Plan 04-06: Ed25519 keypair one-time-generate: generate locally, paste private key into GitHub Secret, delete local file immediately, commit pubkey only
 - [Phase ?]: 04-08: Option-1 (timestamp-suffix synthetic api_name) over Option-2 (drop UNIQUE INDEX) — preserves production dedup for real achievements
 - [Phase ?]: 04-08: Reserved-prefix convention HALLMARK_TEST_UNLOCK_ — popup_queue substitutes canonical UI-SPEC fixture copy on schema_cache miss for the synthetic prefix
+- [Phase ?]: WebView ready handshake: frontend invokes ready cmd in useEffect after listen() promises resolve; backend awaits Notify (5s timeout backstop) before first emit. Eliminates silent-event-drop race in popup_queue + dev-mode 20s blank-window stall.
+- [Phase ?]: vite optimizeDeps.entries lists all 4 HTML entries (companion/popup/settings/wizard) — esbuild now pre-bundles shared deps at dev-server start instead of lazy-transforming on first GET. Production builds bypass entirely (Rollup, not esbuild).
 
 ### Pending Todos
 
@@ -168,6 +171,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-09T21:23:05.534Z
+Last session: 2026-05-09T21:32:17.246Z
 Stopped at: Phase 4 UI-SPEC approved
 Resume file: None
