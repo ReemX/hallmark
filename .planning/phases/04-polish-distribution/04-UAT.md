@@ -355,3 +355,34 @@ gap_entries: 12
   missing:
     - "Covered by the CSS-surface fix above. No separate work item — single PR addresses both windows."
   debug_session: .planning/debug/settings-wizard-css-surface-regression.md
+
+- truth: "Popup notification renders correct achievement metadata for ALL Steam game sources (legitimate Steam, Goldberg, CreamAPI, CODEX, SmartSteamEmu) — display_name, description, and per-achievement icon are populated from local cache before the popup fires; no api_name fallback (e.g. `medal_1`) and no empty image circle for any real unlock"
+  status: diagnosed
+  reason: "User-reported during post-gap-closure UAT (2026-05-10): legitimate-Steam unlocks via SAM (Steam Achievement Manager) render the popup with the raw api_name ('medal_1', 'medal_2', …) instead of the localized display name, the description is blank, and the achievement-icon circle is empty. Goldberg-emulated unlocks render correctly because the resolution chain has a Goldberg-JSON leg; the legitimate-Steam path has none."
+  severity: major
+  test: 16
+  root_cause: |
+    The schema-resolution chain in `src-tauri/src/schema/mod.rs::SchemaCache::resolve` has only two legs:
+      Leg 1 — Goldberg metadata: parses `<emu>/achievements.json` (display_name + description + icon_url). Fires only when `goldberg_json_paths` is non-empty.
+      Leg 2 — public Steam Web API `GetGlobalAchievementPercentagesForApp`: returns global_pct ONLY (no name, no description, no icon).
+    For legitimate-Steam games unlocked via the official Steam client (or SAM, which writes through the official path), `goldberg_json_paths` is empty → Leg 1 skipped → schema_cache stays empty for that app_id → `popup_queue.rs:173-189` schema lookup misses →
+      • display_name fallback: `unwrap_or_else(|| evt.ach_api_name.clone())` (line 184) — D-26 fallback, surfaces the api_name verbatim
+      • description fallback: `unwrap_or_default()` (line 187) — empty string
+      • icon_path: `enriched.and_then(|s| s.icon_path.clone())` → None → frontend renders empty circle
+    `schema/appcache.rs:1-9` explicitly states "achievement icons are NOT stored here for legitimate Steam games"; this module only resolves the game-header icon.
+    Net: the chain assumes either Goldberg-supplied metadata OR a not-yet-implemented legit-Steam metadata source; the legit-Steam leg was deferred and never landed.
+  artifacts:
+    - "src-tauri/src/schema/mod.rs:110-226 — `resolve()` has only Goldberg + global_pct legs; no legit-Steam metadata leg"
+    - "src-tauri/src/schema/appcache.rs:1-9 — explicit comment that achievement icons are out of scope here"
+    - "src-tauri/src/popup_queue.rs:173-205 — fallback path renders api_name + empty description + None icon when schema lookup misses"
+    - "src-tauri/src/sources/steam.rs (Plan 1) — emits RawUnlockEvent for legitimate-Steam unlocks but provides no metadata"
+  missing:
+    - |
+      New schema-resolution leg for legitimate-Steam games. Constraint per user: must populate ALL achievements for an app on game-load (not on popup-fire), so the popup-fire path stays cache-only and fast. Two viable v1 sources:
+      A. **Local Steam binary VDF cache** (preferred — no API key, offline): `<steam>/appcache/stats/UserGameStats_*_<appid>.bin` for unlock state already in scope; the per-app schema (display_name + description + icon_hash per achievement) lives in `<steam>/appcache/stats_<appid>.bin` (binary KeyValue / VDF format). Achievement icons are downloaded by the Steam client into `<steam>/appcache/librarycache/<appid>/<icon_hash>.jpg` (or `.dat`). One parse per game-start populates schema_cache for all achievements; popup_queue continues to use `SchemaCache::lookup` unchanged.
+      B. **Public Steam Web API `ISteamUserStats/GetSchemaForGame/v2`** — requires a Steam Web API key (free, registerable). Returns localized display_name + description + icon URL. Conflicts with CONTEXT.md "no Steam Web API in v1" except the public no-auth `GetGlobalAchievementPercentagesForApp` already used by Leg 2; treating GetSchemaForGame the same way needs a constraint amendment.
+      Recommended (subject to a debug session): A first, fall back to the existing global_pct leg for rarity. Leg sequence becomes Goldberg → legit-Steam VDF → global_pct, all eager at game-start.
+    - "Trigger point: `SchemaCache::resolve()` is already kicked off on game-start by Plan 03 (D-25). Add the new leg there, between Goldberg and global_pct, so legit-Steam games populate even when no Goldberg JSON exists."
+    - "Frontend (popup): no change needed once schema_cache is populated — the existing `enriched.icon_path` / `display_name` / `description` propagation works as designed."
+    - "Test fixture: synthetic test-popup path is unaffected (already bypasses schema lookup via `synthetic_test_display`)."
+  debug_session: ".planning/debug/legit-steam-metadata-missing.md (TBD — to be created when this finding is promoted to a gap-closure plan)"
