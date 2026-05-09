@@ -1,0 +1,100 @@
+# .github/workflows/release.yml — Phase 4 Plan 04-06
+# Triggered on tag push v*.*.* (D-25) or workflow_dispatch (D-26).
+# Builds NSIS installer + portable .zip on windows-latest, signs latest.json
+# via TAURI_SIGNING_PRIVATE_KEY (D-21), uploads all artifacts to the matching
+# GitHub Release.
+
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+  publish:
+    permissions:
+      contents: write
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'pnpm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build + create release (NSIS + latest.json)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # D-21: Ed25519 keypair lives ONLY as a GitHub secret.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # === COMMENTED-OUT placeholders for future code-signing (D-24) ===
+          # When a code-signing certificate becomes available, uncomment the
+          # following two env vars and add the corresponding repo secrets.
+          # No restructuring needed — tauri-bundler picks them up automatically.
+          # WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          # WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Hallmark ${{ github.ref_name }}'
+          releaseBody: |
+            ## Install
+
+            **Installer (recommended):** Download `hallmark-setup.exe` and double-click. SmartScreen may warn — click "More info" → "Run anyway". Installs to `%LOCALAPPDATA%\Hallmark` (no admin needed).
+
+            **Portable:** Download `hallmark-portable-${{ github.ref_name }}.zip`, extract anywhere, run `hallmark.exe`. State persists in `%APPDATA%\com.hallmark.app\`. (Auto-update is disabled in portable mode.)
+
+            ## Auto-update
+
+            Existing installs from prior versions will auto-prompt the next time the companion window opens.
+          releaseDraft: false
+          prerelease: false
+          # uploadUpdaterJson defaults to true → latest.json + sig auto-uploaded.
+
+      - name: Build portable .zip (custom — Tauri has no portable target)
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          $exe = "src-tauri/target/release/hallmark.exe"
+          if (-not (Test-Path $exe)) {
+            Write-Error "Expected executable not found: $exe"
+            exit 1
+          }
+          $stage = "portable-stage"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item $exe (Join-Path $stage 'hallmark.exe')
+          # Hallmark bundles SFX via include_bytes! at compile time, so no
+          # runtime asset directory is needed in the .zip.
+          $zipName = "hallmark-portable-$version.zip"
+          if (Test-Path $zipName) { Remove-Item $zipName }
+          Compress-Archive -Path "$stage/*" -DestinationPath $zipName
+          "PORTABLE_ZIP=$zipName" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Built portable zip: $zipName"
+
+      - name: Upload portable .zip to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          gh release upload ${{ github.ref_name }} ${{ env.PORTABLE_ZIP }} --clobber
