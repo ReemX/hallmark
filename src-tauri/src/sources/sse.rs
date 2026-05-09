@@ -351,8 +351,14 @@ impl SourceAdapter for SseAdapter {
                     timestamp: 0,
                     source: SourceKind::SmartSteamEmu,
                 };
-                if tx.send(evt).await.is_err() {
-                    tracing::error!("RawUnlockEvent receiver dropped");
+                // CR-01 / BL-02: emit FIRST, then commit baseline only on send-success.
+                // If the receiver is dropped (channel closed / pipeline tearing down),
+                // skipping the baseline.insert leaves `was = false` for this key so a
+                // future on_file_changed event can re-fire the diff. Otherwise the
+                // unlock event is permanently lost. Mirrors goldberg.rs ordering.
+                if let Err(e) = tx.send(evt).await {
+                    tracing::error!(error = %e, "RawUnlockEvent receiver dropped; not committing baseline so retry can fire");
+                    continue;
                 }
             }
             baseline.insert(key, rec.achieved);
