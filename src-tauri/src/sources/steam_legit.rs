@@ -409,13 +409,24 @@ impl SourceAdapter for SteamLegitAdapter {
                 return Ok(());
             }
         };
+        // CR-02: claim the new hash atomically under a single write-lock acquisition.
+        // The previous read-then-write split allowed two concurrent on_file_changed
+        // calls to both observe "hash absent", both proceed to parse + emit, and
+        // produce duplicate events. Writing the new hash up-front ("claim") closes
+        // the TOCTOU window: any concurrent caller observing the same hash will skip.
+        // If parse/emit fails after the claim, the next event with identical bytes
+        // legitimately skips (same content was already processed); a different hash
+        // overwrites the entry. Mirrors goldberg's BL-02 ordering invariant — any
+        // crash between claim and baseline-update yields at most one extra parse
+        // on the next event, which is harmless.
         let hash: [u8; 32] = Sha256::digest(&bytes).into();
         {
-            let h = self.last_hash.read().await;
+            let mut h = self.last_hash.write().await;
             if h.get(&path) == Some(&hash) {
                 tracing::trace!(path = %path.display(), "content unchanged; skip");
                 return Ok(());
             }
+            h.insert(path.clone(), hash);
         }
 
         let vdf = match vdf_binary::parse_binary_vdf(&bytes) {
@@ -455,7 +466,7 @@ impl SourceAdapter for SteamLegitAdapter {
             }
             baseline.insert(key, earned_now);
         }
-        self.last_hash.write().await.insert(path.clone(), hash);
+        // CR-02: hash was claimed atomically before parse/emit; no trailing insert needed.
         Ok(())
     }
 }
