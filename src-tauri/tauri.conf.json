@@ -12,15 +12,29 @@
   "app": {
     "windows": [],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: asset: https://media.steampowered.com https://cdn.akamai.steamstatic.com https://shared.fastly.steamstatic.com; connect-src 'self' https://api.steampowered.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:"
+      "csp": "default-src 'self'; img-src 'self' data: asset: https://media.steampowered.com https://cdn.akamai.steamstatic.com https://shared.fastly.steamstatic.com; connect-src 'self' https://api.steampowered.com https://github.com https://objects.githubusercontent.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:"
     }
   },
   "bundle": {
-    "active": false,
-    "targets": "all",
+    "active": true,
+    "createUpdaterArtifacts": true,
+    "targets": ["nsis"],
     "category": "Utility",
     "shortDescription": "PSN/Xbox-grade achievement popups for PC gaming",
     "longDescription": "PSN/Xbox-grade achievement popups for PC gaming.",
-    "icon": ["icons/icon.ico"]
+    "icon": ["icons/icon.ico"],
+    "windows": {
+      "nsis": {
+        "installMode": "perUser"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "PLACEHOLDER_REPLACE_AT_RELEASE",
+      "endpoints": [
+        "https://github.com/ReemX/hallmark/releases/latest/download/latest.json"
+      ]
+    }
   }
 }
