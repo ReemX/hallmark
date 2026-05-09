@@ -20,6 +20,17 @@ pub mod popup_queue;   // Plan 05 — drain task with adaptive compression + 100
 pub mod ui;            // Plan 05 — popup + companion WebviewWindowBuilder + HWND patch
 pub mod game_detect;   // Plan 03 — sysinfo + Steam state hybrid + appmanifest match
 
+// ---- Phase 4 modules ----
+// 04-01a created the file stubs; this plan declares them in the ladder
+// and 04-02/03/04/05 fill in each module's body.
+pub mod tray;
+pub mod autostart;
+pub mod test_trigger;
+pub mod first_run;
+pub mod settings_window;
+pub mod portable_mode;
+pub mod updater_glue;
+
 use tauri::{Listener, Manager};
 use tracing_subscriber::EnvFilter;
 
@@ -40,6 +51,17 @@ pub mod commands {
         pub store: Arc<crate::store::SqliteStore>,
         pub schema: crate::schema::SchemaCache,
         pub session_id: String,
+        // ---- Phase 4 additions ----
+        /// Clone of the adapter→dedup mpsc::Sender for D-04 test-popup injection.
+        pub raw_tx: tokio::sync::mpsc::Sender<crate::sources::RawUnlockEvent>,
+        /// True if running outside `%LOCALAPPDATA%\Hallmark` (D-23 — disables updater).
+        pub portable_mode: bool,
+        /// True if launched with `--silent` (D-08 — companion does NOT auto-show).
+        pub silent_launch: bool,
+        /// Stash for tauri_plugin_updater::Update awaiting modal confirmation (D-18).
+        pub pending_update: Arc<tokio::sync::Mutex<Option<tauri_plugin_updater::Update>>>,
+        /// Cached DiscoveredPaths from startup — Settings/Wizard rescan replaces this.
+        pub cached_discovery: Arc<tokio::sync::RwLock<crate::paths::DiscoveredPaths>>,
     }
 
     /// Snapshot of one game's companion view: full achievement schema + earned map.
@@ -92,6 +114,63 @@ pub mod commands {
     ) -> Result<Option<crate::store::queries::CompanionPrefs>, String> {
         state.store.with_conn(|c| crate::store::queries::get_companion_prefs(c, app_id))
             .map_err(|e| e.to_string())
+    }
+
+    /// D-15/D-16/D-17: Settings → Detected sources → Rescan, and Wizard initial state.
+    /// Plan 04-04 (settings) and 04-05 (wizard) finalize the body shape.
+    #[tauri::command]
+    pub async fn rescan_paths(
+        state: tauri::State<'_, AppState>,
+    ) -> Result<crate::paths::DiscoveredPaths, String> {
+        let fresh = tokio::task::spawn_blocking(|| crate::paths::discover())
+            .await
+            .map_err(|e| e.to_string())?;
+        let mut guard = state.cached_discovery.write().await;
+        *guard = fresh.clone();
+        Ok(fresh)
+    }
+
+    /// D-20: Modal "Install" button. Calls update.download_and_install + app.restart().
+    /// Plan 04-04 finalizes the implementation; this stub returns a clear error
+    /// so the React modal surfaces it instead of hanging.
+    #[tauri::command]
+    pub async fn install_pending_update(
+        app: tauri::AppHandle,
+        state: tauri::State<'_, AppState>,
+    ) -> Result<(), String> {
+        let _ = (&app, &state);
+        Err("install_pending_update STUB — Plan 04-04 not yet implemented".into())
+    }
+
+    /// D-14: Wizard "Get started" / "Continue anyway" — sets first_run_done if any path detected.
+    /// Plan 04-05 finalizes; this stub does the SQLite write so dismissal works end-to-end now.
+    #[tauri::command]
+    pub async fn wizard_dismiss(
+        app: tauri::AppHandle,
+        state: tauri::State<'_, AppState>,
+    ) -> Result<(), String> {
+        let cached = state.cached_discovery.read().await;
+        let any = !cached.steam_libraries.is_empty()
+            || !cached.goldberg_save_roots.is_empty()
+            || !cached.cream_api_appid_dirs.is_empty()
+            || !cached.sse_appid_dirs.is_empty()
+            || cached.steam_legit_appcache_stats.is_some();
+        drop(cached);
+        if any {
+            state.store.with_conn(|c| crate::store::queries::set_first_run_done(c))
+                .map_err(|e| e.to_string())?;
+        }
+        if let Some(w) = tauri::Manager::get_webview_window(&app, "wizard") {
+            let _ = w.close();
+        }
+        Ok(())
+    }
+
+    /// D-01 tray "Settings…" item — opens (or focuses) the Settings window from a frontend invoke.
+    /// Plan 04-04 owns the actual builder; this stub delegates to settings_window::open.
+    #[tauri::command]
+    pub fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
+        crate::settings_window::open(&app).map_err(|e| e.to_string())
     }
 }
 
@@ -154,10 +233,16 @@ pub fn run() {
     );
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             commands::get_companion_state,
             commands::set_companion_prefs_cmd,
             commands::get_companion_prefs_cmd,
+            // Phase 4 commands
+            commands::rescan_paths,
+            commands::install_pending_update,
+            commands::wizard_dismiss,
+            commands::open_settings_window,
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();
@@ -184,6 +269,7 @@ pub fn run() {
                 goldberg_redirects = discovery.goldberg_local_save_redirects.len(),
                 "path discovery complete"
             );
+            let cached_discovery = std::sync::Arc::new(tokio::sync::RwLock::new(discovery.clone()));
 
             // ----- 4. Bind goldberg helpers BEFORE moving into closures (B-3 fix) -----
             // The struct does NOT have `.goldberg_roots` or `.redirect_map` fields —
@@ -221,6 +307,8 @@ pub fn run() {
 
             // ----- 6. Channels (cli mirrors this topology) -----
             let (raw_tx, raw_rx) = tokio::sync::mpsc::channel::<sources::RawUnlockEvent>(64);
+            // Phase 4: clone raw_tx for AppState (D-04 test-popup inject seam).
+            let raw_tx_for_state = raw_tx.clone();
             let (sink_tx, sink_rx) = tokio::sync::mpsc::channel::<sources::RawUnlockEvent>(64);
 
             // ----- 7. Audio dispatcher (best-effort; popups go silent if device unavailable) -----
@@ -241,12 +329,30 @@ pub fn run() {
             ui::create_companion_window(&app_handle)?;
             tracing::info!("popup + companion windows created (hidden)");
 
+            // Phase 4: portable detection + --silent argv parsing.
+            let portable_mode = portable_mode::is_portable();
+            let silent_launch = portable_mode::is_silent_launch();
+            tracing::info!(portable_mode, silent_launch, "Phase 4 startup flags");
+            let pending_update: std::sync::Arc<tokio::sync::Mutex<Option<tauri_plugin_updater::Update>>>
+                = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+
             // ----- 10. AppState management -----
             app.manage(AppState {
                 store: store.clone(),
                 schema: schema_cache.clone(),
                 session_id: session_id.clone(),
+                raw_tx: raw_tx_for_state,
+                portable_mode,
+                silent_launch,
+                pending_update: pending_update.clone(),
+                cached_discovery: cached_discovery.clone(),
             });
+
+            // Phase 4 D-05: pre-seed schema_cache for the synthetic test popup so the
+            // Fire-test menu item produces a fully-resolved popup without Web API roundtrip.
+            if let Err(e) = test_trigger::seed_test_fixture(&store) {
+                tracing::warn!(error = %e, "test_trigger::seed_test_fixture failed; test popup may show fallback display name");
+            }
 
             // ----- 11. Shared current_pid for popup placement -----
             let current_pid: std::sync::Arc<tokio::sync::Mutex<Option<u32>>> =
@@ -351,6 +457,39 @@ pub fn run() {
                     schema_clone.resolve(app_clone, app_id, goldberg_paths_for_app).await;
                 });
             });
+
+            // ----- Phase 4 wiring -----
+            // Build tray icon + menu (Plan 04-02 owns body).
+            if let Err(e) = tray::build_tray(app) {
+                tracing::warn!(error = %e, "tray icon failed to build; continuing without tray");
+            } else {
+                tracing::info!("tray icon registered");
+            }
+
+            // Updater background-check (Plan 04-04 owns body). Skips when portable_mode.
+            if !portable_mode {
+                updater_glue::spawn_background_check(app_handle.clone());
+            } else {
+                tracing::info!("portable mode: updater background-check skipped (D-23)");
+            }
+
+            // First-run wizard logic (Plan 04-05 owns body). D-14: open if flag unset
+            // OR if 0 paths detected on this launch.
+            let first_run_done = store.with_conn(|c| crate::store::queries::get_first_run_done(c))?;
+            let any_path_detected = !discovery.steam_libraries.is_empty()
+                || !discovery.goldberg_save_roots.is_empty()
+                || !discovery.cream_api_appid_dirs.is_empty()
+                || !discovery.sse_appid_dirs.is_empty()
+                || discovery.steam_legit_appcache_stats.is_some();
+            if !first_run_done || !any_path_detected {
+                if let Err(e) = first_run::open_wizard(app_handle.clone(), any_path_detected) {
+                    tracing::warn!(error = %e, "first-run wizard failed to open");
+                } else {
+                    tracing::info!(any_path_detected, "first-run wizard opened");
+                }
+            } else {
+                tracing::debug!("first_run_done set and >=1 path detected — wizard skipped");
+            }
 
             tracing::info!("Phase 2 setup complete; all subsystems running");
             Ok(())

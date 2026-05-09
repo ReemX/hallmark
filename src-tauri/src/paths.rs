@@ -34,7 +34,7 @@ const STEAMAPI_MAX_SEARCH_DEPTH: usize = 8;
 /// the `installdir` field. Without this pairing, Plan 04's GoldbergAdapter
 /// cannot identify the appid for a redirect whose target directory is not
 /// numeric (e.g. `D:\Game1\Save\achievements.json` — parent is "Save").
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct GoldbergRedirect {
     pub target_path: PathBuf,
     pub app_id: u64,
@@ -44,7 +44,7 @@ pub struct GoldbergRedirect {
 /// `goldberg_save_roots` and `goldberg_local_save_redirects` to construct the
 /// Goldberg adapter; Phase 3 will consume `steam_libraries` to find Steam's
 /// per-user `userdata/<steamid>/<appid>/` paths.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct DiscoveredPaths {
     /// Steam install root (e.g. `D:\SteamLibrary\Steam`). `None` when Steam not detected.
     pub steam_install: Option<PathBuf>,

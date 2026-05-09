@@ -25,7 +25,7 @@
     "icon": ["icons/icon.ico"],
     "windows": {
       "nsis": {
-        "installMode": "perUser"
+        "installMode": "currentUser"
       }
     }
   },
