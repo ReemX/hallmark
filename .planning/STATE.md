@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
+status: verifying
 stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-05-09T09:19:11.696Z"
+last_updated: "2026-05-09T09:29:32.150Z"
 last_activity: 2026-05-09
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 17
-  completed_plans: 17
+  completed_plans: 18
   percent: 100
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 
 Phase: 03 (Remaining Source Adapters) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-09
 
 Progress: [██████████] 100%
@@ -67,6 +67,7 @@ Progress: [██████████] 100%
 | Phase 03 P01 | 8min | 2 tasks | 6 files |
 | Phase 03 P02 | 4min | 1 tasks | 1 files |
 | Phase 03 P03 | 8min | 1 tasks | 1 files |
+| Phase 03 P04 | 6min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -131,6 +132,10 @@ Recent decisions affecting current work:
 - [Phase ?]: Plan 03-03: Goldberg companion file is v1 candidate source for CRC reverse map; Phase 2 SchemaCache integration deferred to Plan 04 polish
 - [Phase ?]: Plan 03-03: Placeholder format <crc:0x{:08x}> when no candidate api_name resolves — popup still fires with degraded display (Pitfall #8 analog)
 - [Phase ?]: Plan 03-03: User\Achievements.ini variant (Hydra-referenced) logged warn and skipped during discovery — RESEARCH.md Open Question #2 deferral to Phase 4 polish
+- [Phase ?]: Plan 03-04: SC1 (DETECT-02 verification) calls adapter.on_file_changed directly to bypass debouncer flakiness; debouncer integration covered by SC3 + Phase 1 watcher_core tests
+- [Phase ?]: Plan 03-04: SC3 headline test uses 3 MockAdapter instances; real-adapter coverage in SC3-supplement separates architectural assertion from per-adapter parser complexity
+- [Phase ?]: Plan 03-04: SC3-supplement accepts both schema-resolved api_name AND <crc:0x...> placeholder — dedup invariant holds regardless because same CRC produces same placeholder deterministically
+- [Phase ?]: Plan 03-04: 4-adapter pipeline shipped (Goldberg, SteamLegit, CreamApi, SmartSteamEmu); CrossSourceDedup 2→N adapter generalization proven empirically by 3-source SC3 test
 
 ### Pending Todos
 
@@ -149,6 +154,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-09T09:19:11.687Z
+Last session: 2026-05-09T09:29:25.336Z
 Stopped at: Completed 03-03-PLAN.md
 Resume file: None

@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Detection Pipeline Foundation** - Watcher core, Goldberg adapter, first-launch seeding, path discovery, SQLite store (completed 2026-05-08)
 - [x] **Phase 2: Premium UI — Popup, Companion & Game Session** - Popup overlay with signature sound, companion window, game-session detection, schema/icon resolution (completed 2026-05-08)
-- [ ] **Phase 3: Remaining Source Adapters** - Steam-legit binary VDF adapter, CreamAPI adapter, SmartSteamEmu adapter, cross-source dedup
+- [x] **Phase 3: Remaining Source Adapters** - Steam-legit binary VDF adapter, CreamAPI adapter, SmartSteamEmu adapter, cross-source dedup (completed 2026-05-09)
 - [ ] **Phase 4: Polish & Distribution** - Test popup trigger, start-with-Windows, NSIS installer, auto-updater, GitHub Actions release pipeline, first-run wizard
 
 ## Phase Details
@@ -71,7 +71,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [x] 03-01-PLAN.md — SteamLegit adapter + hand-rolled binary VDF reader (vdf_binary.rs) + path-discovery extension reading HKCU registry user IDs (DETECT-02)
   - [x] 03-02-PLAN.md — CreamAPI adapter + 12-LoC INI parser + path-discovery extension enumerating %APPDATA%/CreamAPI/<appid>/ (DETECT-03)
   - [x] 03-03-PLAN.md — SmartSteamEmu adapter (stats.bin variant) + 24-byte record parser + lazy CRC32 to API-name reverse lookup + path-discovery extension (DETECT-04)
-  - [ ] 03-04-PLAN.md — Wire 4 adapters in lib.rs::run(), integration tests for all 3 ROADMAP success criteria including 3-source dedup verification
+  - [x] 03-04-PLAN.md — Wire 4 adapters in lib.rs::run(), integration tests for all 3 ROADMAP success criteria including 3-source dedup verification
 
 ### Phase 4: Polish & Distribution
 **Goal**: Any user can install Hallmark from a GitHub Release via a double-click NSIS installer or a portable zip, verify their installation fires a popup immediately via the test trigger, opt into start-with-Windows, receive in-app update prompts, and be guided through path discovery on first run — making the public release genuinely usable without a README deep-dive.
@@ -94,5 +94,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Detection Pipeline Foundation | 5/5 | Complete | 2026-05-08 |
 | 2. Premium UI — Popup, Companion & Game Session | 7/7 | Complete   | 2026-05-08 |
-| 3. Remaining Source Adapters | 0/5 | Not started | - |
+| 3. Remaining Source Adapters | 5/5 | Complete   | 2026-05-09 |
 | 4. Polish & Distribution | 0/TBD | Not started | - |
