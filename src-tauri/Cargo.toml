@@ -40,6 +40,11 @@ rodio                 = { version = "0.22", features = ["wav"] }
 sysinfo               = "0.38"
 reqwest               = { version = "0.13", features = ["json", "rustls"], default-features = false }
 
+# Phase 3: binary VDF reader for legit Steam UserGameStats + SSE stats.bin
+byteorder             = "1.5"
+# Phase 3: CRC32 of API names for SmartSteamEmu reverse-lookup
+crc32fast             = "1.4"
+
 [target.'cfg(target_os = "windows")'.dependencies]
 winreg = "0.56"
 windows = { version = "0.58", features = [

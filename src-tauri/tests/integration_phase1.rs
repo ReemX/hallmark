@@ -214,6 +214,7 @@ async fn sc3_local_save_txt_redirect_drives_end_to_end_pipeline() {
         steam_libraries: vec![lib.clone()],
         goldberg_save_roots: vec![],
         goldberg_local_save_redirects: redirects.clone(),
+        ..Default::default()
     };
     let redirect_map = paths::goldberg_redirect_map(&discovered);
     assert_eq!(
@@ -457,6 +458,7 @@ fn sc5_path_discovery_logs_every_category_to_tracing() {
             target_path: PathBuf::from(r"D:\Redirect"),
             app_id: 4242,
         }],
+        ..Default::default()
     };
     paths::log_discovery_pub_for_tests(&d);
 

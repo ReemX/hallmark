@@ -21,6 +21,10 @@
 //! no borrowed data — only owned `Vec<PathBuf>` and `Arc<RwLock<...>>` interiors.
 
 pub mod goldberg;
+pub mod steam_legit;
+pub mod cream_api;
+pub mod sse;
+pub mod vdf_binary;
 
 use std::path::PathBuf;
 use tokio::sync::mpsc;
@@ -51,7 +55,13 @@ pub enum SourceKind {
     /// Goldberg / gbe_fork emulator. Watches `%APPDATA%\Goldberg SteamEmu Saves\`,
     /// `%APPDATA%\GSE Saves\`, and `local_save.txt` redirects.
     Goldberg,
-    // Phase 3 will add: SteamLegit, CreamApi, SmartSteamEmu
+    /// Legitimate Steam client. Watches `<SteamPath>\appcache\stats\UserGameStats_<userid>_<appid>.bin`
+    /// and reads `UserGameStatsSchema_<appid>.bin` for stat-slot → API-name mapping.
+    SteamLegit,
+    /// CreamAPI emulator. Watches `%APPDATA%\CreamAPI\<appid>\stats\CreamAPI.Achievements.cfg`.
+    CreamApi,
+    /// SmartSteamEmu emulator. Watches `%APPDATA%\SmartSteamEmu\<appid>\stats.bin`.
+    SmartSteamEmu,
     // Future community plug-ins will add: Community(String)
 }
 
@@ -61,6 +71,9 @@ impl SourceKind {
     pub fn as_str(&self) -> &'static str {
         match self {
             SourceKind::Goldberg => "goldberg",
+            SourceKind::SteamLegit => "steam_legit",
+            SourceKind::CreamApi => "cream_api",
+            SourceKind::SmartSteamEmu => "smartsteamemu",
         }
     }
 }
@@ -117,7 +130,11 @@ mod tests {
     #[test]
     fn source_kind_as_str_is_stable_lowercase() {
         assert_eq!(SourceKind::Goldberg.as_str(), "goldberg");
+        assert_eq!(SourceKind::SteamLegit.as_str(), "steam_legit");
+        assert_eq!(SourceKind::CreamApi.as_str(), "cream_api");
+        assert_eq!(SourceKind::SmartSteamEmu.as_str(), "smartsteamemu");
         assert_eq!(SourceKind::Goldberg.to_string(), "goldberg");
+        assert_eq!(SourceKind::SteamLegit.to_string(), "steam_legit");
     }
 
     #[test]

@@ -55,6 +55,14 @@ pub struct DiscoveredPaths {
     pub goldberg_save_roots: Vec<PathBuf>,
     /// Resolved `local_save.txt` redirect targets paired with their appids.
     pub goldberg_local_save_redirects: Vec<GoldbergRedirect>,
+    /// Phase 3: `<SteamPath>\appcache\stats` if it exists (legitimate Steam achievement state dir).
+    pub steam_legit_appcache_stats: Option<PathBuf>,
+    /// Phase 3: Steam user IDs enumerated from `HKCU\Software\Valve\Steam\Users` registry.
+    pub steam_legit_user_ids: Vec<u64>,
+    /// Phase 3: `%APPDATA%\CreamAPI\<appid>\` directories present on disk.
+    pub cream_api_appid_dirs: Vec<PathBuf>,
+    /// Phase 3: `%APPDATA%\SmartSteamEmu\<appid>\` directories with `stats.bin` present.
+    pub sse_appid_dirs: Vec<PathBuf>,
 }
 
 /// Top-level discovery. Reads registry, parses VDFs, walks game install dirs.
@@ -69,11 +77,20 @@ pub fn discover() -> DiscoveredPaths {
     let goldberg_save_roots = goldberg_default_roots();
     let goldberg_local_save_redirects = scan_local_save_redirects(&steam_libraries);
 
+    // Phase 3 sub-module discovery — each adapter plan populates its module's body.
+    let steam_legit = crate::sources::steam_legit::discover_paths(steam_install.as_deref());
+    let cream_api = crate::sources::cream_api::discover_paths();
+    let sse = crate::sources::sse::discover_paths();
+
     let result = DiscoveredPaths {
         steam_install: steam_install.clone(),
         steam_libraries: steam_libraries.clone(),
         goldberg_save_roots: goldberg_save_roots.clone(),
         goldberg_local_save_redirects: goldberg_local_save_redirects.clone(),
+        steam_legit_appcache_stats: steam_legit.appcache_stats,
+        steam_legit_user_ids: steam_legit.user_ids,
+        cream_api_appid_dirs: cream_api.appid_dirs,
+        sse_appid_dirs: sse.appid_dirs,
     };
 
     // Success Criterion #5: log every discovered path at startup.
@@ -120,6 +137,20 @@ fn log_discovery(d: &DiscoveredPaths) {
             app_id = r.app_id,
             "discovery: Goldberg local_save.txt redirect"
         );
+    }
+    // Phase 3 categories
+    match &d.steam_legit_appcache_stats {
+        Some(p) => tracing::info!(path = %p.display(), "discovery: Steam-legit appcache/stats"),
+        None => tracing::info!("discovery: Steam-legit appcache/stats NOT detected"),
+    }
+    for uid in &d.steam_legit_user_ids {
+        tracing::info!(user_id = uid, "discovery: Steam user id (HKCU registry)");
+    }
+    for p in &d.cream_api_appid_dirs {
+        tracing::info!(path = %p.display(), "discovery: CreamAPI appid dir");
+    }
+    for p in &d.sse_appid_dirs {
+        tracing::info!(path = %p.display(), "discovery: SmartSteamEmu appid dir");
     }
     if d.goldberg_save_roots.is_empty() && d.goldberg_local_save_redirects.is_empty() {
         tracing::warn!(
@@ -936,6 +967,7 @@ mod tests_goldberg {
                 target_path: PathBuf::from(r"D:\Redirect"),
                 app_id: 12345,
             }],
+            ..Default::default()
         };
         let watch = goldberg_watch_paths(&d);
         assert_eq!(watch.len(), 2);
@@ -959,6 +991,7 @@ mod tests_goldberg {
                     app_id: 200,
                 },
             ],
+            ..Default::default()
         };
         let map = goldberg_redirect_map(&d);
         assert_eq!(map.len(), 2);
@@ -1016,6 +1049,7 @@ mod tests_goldberg {
                 target_path: PathBuf::from(r"D:\Redirect"),
                 app_id: 12345,
             }],
+            ..Default::default()
         };
         log_discovery(&d);
 
