@@ -106,8 +106,17 @@ pub fn parse_creamapi_state(text: &str) -> HashMap<String, bool> {
         if line.starts_with("###") || line.starts_with(';') {
             continue;
         }
-        if line.starts_with('[') && line.ends_with(']') && line.len() >= 2 {
+        if line.starts_with('[') && line.ends_with(']') && line.len() > 2 {
             let inner = &line[1..line.len() - 1];
+            // WR-08: reject empty / whitespace-only section names like `[]` or `[   ]`.
+            // The previous `len() >= 2` check matched `[]` (length 2), inserting an
+            // empty-string achievement key. Subsequent `achieved=true` would flip the
+            // empty key to true and emit `RawUnlockEvent { ach_api_name: "" }`, which
+            // would propagate to the popup UI and SQLite as a malformed entry.
+            if inner.trim().is_empty() {
+                current = None;
+                continue;
+            }
             current = Some(inner.to_string());
             // Default to false until an `achieved=` line confirms otherwise; this lets
             // the baseline include "locked" achievements so the diff can detect
@@ -366,6 +375,18 @@ mod tests {
         let text = "### comment line\n[ACH_X]\nachieved=true\nunlocktime=999\n###another\n";
         let m = parse_creamapi_state(text);
         assert_eq!(m.get("ACH_X").copied(), Some(true));
+        assert_eq!(m.len(), 1);
+    }
+
+    #[test]
+    fn parse_creamapi_state_rejects_empty_section_names() {
+        // WR-08: `[]` and `[   ]` must not produce empty-string keys. A subsequent
+        // `achieved=true` line under such a section is silently dropped (no current
+        // section context).
+        let text = "[]\nachieved=true\n[   ]\nachieved=true\n[ACH_OK]\nachieved=true\n";
+        let m = parse_creamapi_state(text);
+        assert!(!m.contains_key(""), "empty-string key must not be inserted; got map: {:?}", m);
+        assert_eq!(m.get("ACH_OK").copied(), Some(true));
         assert_eq!(m.len(), 1);
     }
 
