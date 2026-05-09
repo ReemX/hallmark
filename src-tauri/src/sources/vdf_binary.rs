@@ -82,8 +82,21 @@ fn read_object_body<R: Read>(r: &mut R, depth: usize) -> anyhow::Result<Value> {
         let mut tag = [0u8; 1];
         let n = r.read(&mut tag)?;
         if n == 0 {
-            // EOF at top of the loop is benign — end of file as end of root object.
-            break;
+            // WR-02: distinguish root vs nested EOF. At depth 0 (the root call),
+            // EOF is benign — empirical UserGameStats files sometimes end exactly at
+            // the last entry without an explicit 0x08 close. At depth > 0, EOF
+            // before a 0x08 close tag means the file is truncated/corrupt and the
+            // nested object is incomplete; returning Ok with the partial map would
+            // silently accept tampered or malformed input. Plan W-2's "non-zero
+            // leading byte returns Err" acceptance is now matched by an analogous
+            // "missing nested close tag returns Err".
+            if depth == 0 {
+                break;
+            }
+            anyhow::bail!(
+                "vdf_binary: unexpected EOF in nested object at depth {} (missing 0x08 close tag)",
+                depth
+            );
         }
         match tag[0] {
             0x00 => {
