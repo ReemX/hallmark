@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-10-PLAN.md
-last_updated: "2026-05-09T21:44:41.426Z"
+stopped_at: Completed 04-12-PLAN.md
+last_updated: "2026-05-09T21:52:34.674Z"
 last_activity: 2026-05-09
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 32
-  completed_plans: 32
+  completed_plans: 33
   percent: 100
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 ## Current Position
 
 Phase: 04 (polish-distribution) — EXECUTING
-Plan: 5 of 13
+Plan: 6 of 13
 Status: Ready to execute
 Last activity: 2026-05-09
 
@@ -75,6 +75,7 @@ Progress: [██████████] 100%
 | Phase 04 P09 | 4min | 5 tasks | 6 files |
 | Phase 04 P10 | 2m 14s | 2 tasks | 3 files |
 | Phase 04 P11 | 3m 32s | 3 tasks | 10 files |
+| Phase 04 P12 | 4m 33s | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -160,6 +161,10 @@ Recent decisions affecting current work:
 - [Phase ?]: 04-10: data-tauri-drag-region applied per-element on title/badge/span; close buttons auto-excluded by Tauri interactive rule
 - [Phase ?]: 04-11: Use scoped 2-URL allowlist for shell:allow-open (NOT wildcard) — least-privilege per T-04G-13
 - [Phase ?]: 04-11: Add shell:allow-open to BOTH settings.json AND companion.json — UpdateModal renders in companion per main-companion.tsx
+- [Phase ?]: 04-12: Tagged-enum FFI surface (CheckOutcome) replaces lossy String mapping for tauri_plugin_updater::Error — preserves variant info across Rust→TS boundary; serde tag='status' rename_all='snake_case'
+- [Phase ?]: 04-12: NoReleaseYet path calls persist_last_checked — successful 404 'no release' answer counts as a fresh check for UX freshness
+- [Phase ?]: 04-12: Differentiated log levels in spawn_background_check — info! for ReleaseNotFound, warn! for transport/other; matches UI differentiation
+- [Phase ?]: 04-12: '_ => CheckErrorKind::Other' fallback — tauri_plugin_updater::Error is non_exhaustive, unknown future variants degrade to OtherError with original message
 
 ### Pending Todos
 
@@ -178,6 +183,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-09T21:44:17.364Z
-Stopped at: Completed 04-10-PLAN.md
+Last session: 2026-05-09T21:52:34.665Z
+Stopped at: Completed 04-12-PLAN.md
 Resume file: None
