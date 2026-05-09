@@ -94,15 +94,63 @@ pub fn discover_paths(_steam_install: Option<&Path>) -> SteamLegitPaths {
     SteamLegitPaths::default()
 }
 
+/// WR-06: Strip the leading `UserGameStats_` prefix case-insensitively. Also rejects
+/// `UserGameStatsSchema_*` (which begins with `UserGameStatsS...`) by additionally
+/// requiring that the character immediately after `UserGameStats_` is numeric (the
+/// user_id digit). Returns the byte slice of the rest of the name minus the leading
+/// prefix and trailing `.bin` suffix, or `None` on mismatch.
+fn strip_user_game_stats_envelope(name: &str) -> Option<&str> {
+    const PREFIX_LEN: usize = "UserGameStats_".len();
+    if name.len() < PREFIX_LEN + 4 {
+        return None;
+    }
+    if !name.is_char_boundary(PREFIX_LEN) {
+        return None;
+    }
+    let (prefix, rest) = name.split_at(PREFIX_LEN);
+    if !prefix.eq_ignore_ascii_case("UserGameStats_") {
+        return None;
+    }
+    // Reject `UserGameStatsSchema_...` (the next char would be 'S'/'s', not a digit).
+    let stem = rest.strip_suffix_ignore_case(".bin")?;
+    if !stem.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+        return None;
+    }
+    Some(stem)
+}
+
+/// Polyfill: `str::strip_suffix` is case-sensitive in std; for filename matching on
+/// Windows we need case-insensitive `.bin` suffix stripping. WR-06.
+trait StripSuffixIgnoreCase {
+    fn strip_suffix_ignore_case<'a>(&'a self, suffix: &str) -> Option<&'a str>;
+}
+impl StripSuffixIgnoreCase for str {
+    fn strip_suffix_ignore_case<'a>(&'a self, suffix: &str) -> Option<&'a str> {
+        if self.len() < suffix.len() {
+            return None;
+        }
+        let split = self.len() - suffix.len();
+        if !self.is_char_boundary(split) {
+            return None;
+        }
+        let (head, tail) = self.split_at(split);
+        if tail.eq_ignore_ascii_case(suffix) {
+            Some(head)
+        } else {
+            None
+        }
+    }
+}
+
 fn parse_user_id_from_filename(name: &str) -> Option<u64> {
-    // UserGameStats_<userid>_<appid>.bin
-    let stem = name.strip_suffix(".bin")?.strip_prefix("UserGameStats_")?;
+    // UserGameStats_<userid>_<appid>.bin (case-insensitive — WR-06)
+    let stem = strip_user_game_stats_envelope(name)?;
     let (uid, _appid) = stem.split_once('_')?;
     uid.parse().ok()
 }
 
 fn parse_app_id_from_filename(name: &str) -> Option<u64> {
-    let stem = name.strip_suffix(".bin")?.strip_prefix("UserGameStats_")?;
+    let stem = strip_user_game_stats_envelope(name)?;
     let (_uid, appid) = stem.split_once('_')?;
     appid.parse().ok()
 }
@@ -387,12 +435,16 @@ impl SourceAdapter for SteamLegitAdapter {
     ) -> anyhow::Result<()> {
         let Some(name) = path.file_name().and_then(|n| n.to_str()) else { return Ok(()) };
 
-        // Skip schema-file events — they trigger schema reload at next state-file event, not at the schema event itself.
-        if name.starts_with("UserGameStatsSchema_") {
+        // WR-06: Skip schema-file events — they trigger schema reload at next state-file
+        // event, not at the schema event itself. Case-insensitive: Windows is
+        // case-insensitive at the filesystem level; mixed-case from copy/paste / network
+        // shares / backup tools must still be detected.
+        let name_lower = name.to_ascii_lowercase();
+        if name_lower.starts_with("usergamestatsschema_") {
             tracing::trace!(path = %path.display(), "schema file event; ignored (schema is mtime-cached on demand)");
             return Ok(());
         }
-        if !name.starts_with("UserGameStats_") || !name.ends_with(".bin") {
+        if !name_lower.starts_with("usergamestats_") || !name_lower.ends_with(".bin") {
             return Ok(());
         }
         let Some(user_id) = parse_user_id_from_filename(name) else { return Ok(()) };

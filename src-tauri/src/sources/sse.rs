@@ -306,7 +306,15 @@ impl SourceAdapter for SseAdapter {
         path: PathBuf,
         tx: mpsc::Sender<RawUnlockEvent>,
     ) -> anyhow::Result<()> {
-        if path.file_name().and_then(|n| n.to_str()) != Some(STATE_FILENAME) {
+        // WR-06: case-insensitive match on Windows (case-insensitive filesystem).
+        // Mixed-case `stats.bin` from copy/paste / network shares / backup tools
+        // would otherwise be silently dropped.
+        let matches = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map(|n| n.eq_ignore_ascii_case(STATE_FILENAME))
+            .unwrap_or(false);
+        if !matches {
             return Ok(());
         }
         let Some(app_id) = extract_app_id(&path) else {

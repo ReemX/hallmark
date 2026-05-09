@@ -207,7 +207,17 @@ impl SourceAdapter for CreamApiAdapter {
         tx: mpsc::Sender<RawUnlockEvent>,
     ) -> anyhow::Result<()> {
         // Filename guard FIRST.
-        if path.file_name().and_then(|n| n.to_str()) != Some(STATE_FILENAME) {
+        // WR-06: Windows is case-insensitive at the filesystem level. `notify` typically
+        // returns the on-disk case, but copy/paste, network shares, and backup tools can
+        // produce mixed-case names that don't match the literal `STATE_FILENAME`
+        // ("CreamAPI.Achievements.cfg"). `eq_ignore_ascii_case` accepts any ASCII case
+        // variant; the filename here is pure ASCII so this is exhaustive.
+        let matches = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map(|n| n.eq_ignore_ascii_case(STATE_FILENAME))
+            .unwrap_or(false);
+        if !matches {
             return Ok(());
         }
         let Some(app_id) = extract_app_id(&path) else {
